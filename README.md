@@ -36,10 +36,10 @@ gcc & g++ >= 9
 
 TBB >= 2020. Please follow https://github.com/oneapi-src/oneTBB
 
-:four: **livox_ros_driver**
+:four: **livox_ros_driver2**
 
 ```bash
-git clone https://github.com/Livox-SDK/Livox-SDK
+git clone https://github.com/Livox-SDK/Livox-SDK2
 cd Livox-SDK
 mkdir build
 cd build
@@ -61,7 +61,7 @@ cd <your workspace>
 mkdir src
 cd src
 git clone https://github.com/zijiechenrobotics/ig_lio_workspace.git
-git clone https://github.com/Livox-SDK/livox_ros_driver
+git clone https://github.com/Livox-SDK/livox_ros_driver2
 cd ..
 catkin_make
 ```

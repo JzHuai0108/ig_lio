@@ -1,0 +1,13 @@
+<launch>
+    <arg name="configyaml" default="kuangye_vlp16.yaml" />
+    <arg name="bagfile" default="" />
+
+    <rosparam command="load" file="$(find ig_lio)/config/$(arg configyaml)" />
+
+    <node pkg="ig_lio" type="ig_lio_node" name="ig_lio_node" output="screen" />
+    
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ig_lio)/rviz/lio_show.rviz" required="true" />
+
+    <node pkg="rosbag" type="play" name="rosbag_play" args="$(arg bagfile)" output="screen" />
+
+</launch>

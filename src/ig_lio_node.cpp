@@ -126,7 +126,7 @@ void CloudCallBack(const sensor_msgs::PointCloud2::ConstPtr& msg) {
 }
 
 // process livox
-void LivoxCloudCallBack(const livox_ros_driver::CustomMsg::ConstPtr& msg) {
+void LivoxCloudCallBack(const livox_ros_driver2::CustomMsg::ConstPtr& msg) {
   static double last_lidar_timestamp = 0.0;
   static CloudPtr temp_cloud_ptr(new CloudType());
   static bool first_scan_flag = true;

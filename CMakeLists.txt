@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   roslib
   pcl_ros
-  livox_ros_driver
+  livox_ros_driver2
 )
 
 ## System dependencies are found with CMake's conventions

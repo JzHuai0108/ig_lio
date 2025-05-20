@@ -14,7 +14,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 
-#include <livox_ros_driver/CustomMsg.h>
+#include <livox_ros_driver2/CustomMsg.h>
 
 #include "point_type.h"
 
@@ -84,7 +84,7 @@ class PointCloudPreprocess {
 
   ~PointCloudPreprocess() = default;
 
-  void Process(const livox_ros_driver::CustomMsg::ConstPtr& msg,
+  void Process(const livox_ros_driver2::CustomMsg::ConstPtr& msg,
                pcl::PointCloud<PointType>::Ptr& cloud_out,
                const double last_start_time = 0.0);
 
