@@ -403,7 +403,10 @@ void Process() {
   // Setp 4: Measurement Update
   timer.Evaluate([&] { lio_ptr->MeasurementUpdate(sensor_measurement); },
                  "measurement update");
-
+  Eigen::Vector3d curr_ba = lio_ptr->GetCurrentBa();
+  Eigen::Vector3d curr_bg = lio_ptr->GetCurrentBg();
+  Eigen::Vector3d curr_vel = lio_ptr->GetCurrentVel();
+  Eigen::Matrix<double, 15, 15> curr_P = lio_ptr->GetCurrentP();
   LOG(INFO) << "iter_num: " << lio_ptr->GetFinalIterations() << std::endl
             << "ba: " << lio_ptr->GetCurrentBa().transpose()
             << " ba_norm: " << lio_ptr->GetCurrentBa().norm()
@@ -523,6 +526,12 @@ void Process() {
                 << std::setprecision(15) << lio_pose(0, 3) << " "
                 << lio_pose(1, 3) << " " << lio_pose(2, 3) << " " << lio_q.x()
                 << " " << lio_q.y() << " " << lio_q.z() << " " << lio_q.w()
+                << std::setprecision(6)
+                << " " << curr_vel(0) << " " << curr_vel(1) << curr_vel(2)
+                << " " << curr_ba(0) << " " << curr_ba(1) << curr_ba(2)
+                << " " << curr_bg(0) << " " << curr_bg(1) << curr_bg(2)
+                << " " << curr_P(0, 0) << curr_P(1, 1) << curr_P(2, 2)
+                << " " << curr_P(3, 3) << curr_P(4, 4) << curr_P(5, 5)
                 << std::endl;
   } else {
     delay_count++;

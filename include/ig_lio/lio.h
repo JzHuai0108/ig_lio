@@ -122,6 +122,8 @@ class LIO {
 
   Eigen::Vector3d GetCurrentBg() { return curr_state_.bg; }
 
+  Eigen::Matrix<double, 15, 15> GetCurrentP() { return P_; }
+
   size_t GetFinalIterations() { return iter_num_; }
 
  private:
