@@ -34,3 +34,6 @@ t_imu_lidar : [-0.011, -0.02329, 0.04412]
 R_imu_lidar : [1, 0, 0,
                 0, 1, 0,
                 0, 0, 1]
+
+pcd_save_en: true
+pcd_save_interval: -1                 # how many LiDAR frames saved in each pcd file, -1: all;

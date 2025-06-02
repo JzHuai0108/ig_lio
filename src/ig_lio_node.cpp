@@ -27,6 +27,13 @@ bool enable_undistort = true;
 bool enable_ahrs_initalization = false;
 Eigen::Matrix4d T_imu_lidar;
 
+// parameters used to save pcds
+fs::path pcd_path;
+bool pcd_save_en = false;
+int pcd_save_interval = -1;
+static int scan_wait_num = 0;
+CloudType::Ptr pcl_wait_save{new CloudType()};
+
 // parameters used to synchronize livox time with the external imu
 double timediff_lidar_wrt_imu = 0.0;
 double lidar_timestamp = 0.0;
@@ -438,7 +445,19 @@ void Process() {
   // publish dense scan
   CloudPtr trans_cloud(new CloudType());
   pcl::transformPointCloud(
-      *sensor_measurement.cloud_ptr_, *trans_cloud, result_pose);
+  *sensor_measurement.cloud_ptr_, *trans_cloud, result_pose);
+  if (pcd_save_en) {
+    *pcl_wait_save += *trans_cloud;
+    scan_wait_num++;
+    if (pcl_wait_save->size() > 0 && pcd_save_interval > 0 && scan_wait_num >= pcd_save_interval) {
+        std::string all_points_dir(pcd_path.string() + "/" + std::to_string(lidar_timestamp) + std::string(".pcd"));
+        pcl::PCDWriter pcd_writer;
+        LOG(INFO) << "current scan saved to " << all_points_dir;
+        pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
+        pcl_wait_save->clear();
+        scan_wait_num = 0;
+    }
+  }
   sensor_msgs::PointCloud2 scan_msg;
   pcl::toROSMsg(*trans_cloud, scan_msg);
   scan_msg.header.frame_id = "world";
@@ -527,11 +546,11 @@ void Process() {
                 << lio_pose(1, 3) << " " << lio_pose(2, 3) << " " << lio_q.x()
                 << " " << lio_q.y() << " " << lio_q.z() << " " << lio_q.w()
                 << std::setprecision(6)
-                << " " << curr_vel(0) << " " << curr_vel(1) << curr_vel(2)
-                << " " << curr_ba(0) << " " << curr_ba(1) << curr_ba(2)
-                << " " << curr_bg(0) << " " << curr_bg(1) << curr_bg(2)
-                << " " << curr_P(0, 0) << curr_P(1, 1) << curr_P(2, 2)
-                << " " << curr_P(3, 3) << curr_P(4, 4) << curr_P(5, 5)
+                << " " << curr_vel(0)  << " " << curr_vel(1)  << " " << curr_vel(2)
+                << " " << curr_ba(0)   << " " << curr_ba(1)   << " " << curr_ba(2)
+                << " " << curr_bg(0)   << " " << curr_bg(1)   << " " << curr_bg(2)
+                << " " << curr_P(0, 0) << " " << curr_P(1, 1) << " " << curr_P(2, 2)
+                << " " << curr_P(3, 3) << " " << curr_P(4, 4) << " " << curr_P(5, 5)
                 << std::endl;
   } else {
     delay_count++;
@@ -628,6 +647,8 @@ int main(int argc, char** argv) {
   double min_radius, max_radius;
   nh.param<double>("min_radius", min_radius, 1.0);
   nh.param<double>("max_radius", max_radius, 1.0);
+  nh.param<bool>("pcd_save_en", pcd_save_en, false);
+  nh.param<int>("pcd_save_interval", pcd_save_interval, -1.0);
 
   LOG(INFO) << "scan_resoultion: " << scan_resolution << std::endl
             << "voxel_map_resolution: " << voxel_map_resolution << std::endl
@@ -707,6 +728,11 @@ int main(int argc, char** argv) {
 
   voxel_filter.setLeafSize(0.5, 0.5, 0.5);
 
+  pcd_path = fs::path(package_path) / "pcd";
+  if (!fs::exists(pcd_path)) {
+    fs::create_directories(pcd_path);	
+  }
+
   // save trajectory
   fs::path result_path = fs::path(package_path) / "result" / "lio_odom.txt";
   if (!fs::exists(result_path.parent_path())) {
@@ -730,6 +756,12 @@ int main(int argc, char** argv) {
     Process();
     rate.sleep();
   }
-
+  if (pcl_wait_save->size() > 0 && pcd_save_en) {
+    std::string file_name = std::string("scans.pcd");
+    std::string all_points_dir(pcd_path.string() + "/all_scans.pcd");
+    pcl::PCDWriter pcd_writer;
+    LOG(INFO) << "current scan saved to " << all_points_dir;
+    pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
+  }
   timer.PrintAll();
 }
