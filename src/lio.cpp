@@ -920,6 +920,9 @@ bool LIO::StaticInitialization(SensorMeasurement& sensor_measurement) {
 }
 
 bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
+  if(!StaticInitialization(sensor_measurement)) {
+    return false;
+  }
   const auto& back_imu = sensor_measurement.imu_buff_.back();
 
   if ((back_imu.orientation.w * back_imu.orientation.w +
@@ -935,15 +938,15 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
                             back_imu.orientation.y,
                             back_imu.orientation.z);
 
-  curr_state_.pose.block<3, 3>(0, 0) = temp_q.toRotationMatrix();
+  curr_state_.pose.block<3, 3>(0, 0) = temp_q.normalized().toRotationMatrix();
 
   curr_state_.pose.block<3, 1>(0, 3).setZero();
 
   curr_state_.vel.setZero();
 
-  curr_state_.bg.setZero();
+//   curr_state_.bg.setZero();
 
-  curr_state_.ba.setZero();
+//   curr_state_.ba.setZero();
 
   prev_state_ = curr_state_;
 
