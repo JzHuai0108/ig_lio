@@ -920,11 +920,10 @@ bool LIO::StaticInitialization(SensorMeasurement& sensor_measurement) {
 }
 
 bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
-  if(!StaticInitialization(sensor_measurement)) {
-    return false;
-  }
+//   if(!StaticInitialization(sensor_measurement)) {
+//     return false;
+//   }
   const auto& back_imu = sensor_measurement.imu_buff_.back();
-
   if ((back_imu.orientation.w * back_imu.orientation.w +
        back_imu.orientation.x * back_imu.orientation.x +
        back_imu.orientation.y * back_imu.orientation.y +
@@ -932,6 +931,54 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
     LOG(ERROR) << "AHRS initalization falid, please use static initalizaiton!";
     return false;
   }
+
+  Eigen::Quaterniond temp_q;
+  if (first_imu_frame_) {
+    const auto& acc = sensor_measurement.imu_buff_.front().linear_acceleration;
+    const auto& gyr = sensor_measurement.imu_buff_.front().angular_velocity;
+    temp_q = Eigen::Quaterniond(sensor_measurement.imu_buff_.front().orientation.w,
+            sensor_measurement.imu_buff_.front().orientation.x,
+            sensor_measurement.imu_buff_.front().orientation.y,
+            sensor_measurement.imu_buff_.front().orientation.z);
+    imu_init_buff_.emplace_back(Eigen::Vector3d(acc.x, acc.y, acc.z) - temp_q.toRotationMatrix() * g_,
+                                Eigen::Vector3d(gyr.x, gyr.y, gyr.z));
+  }
+
+  for (const auto& imu_msg : sensor_measurement.imu_buff_) {
+    temp_q = Eigen::Quaterniond(imu_msg.orientation.w,
+            imu_msg.orientation.x,
+            imu_msg.orientation.y,
+            imu_msg.orientation.z);
+    Eigen::Vector3d acc = Eigen::Vector3d(imu_msg.linear_acceleration.x,
+                        imu_msg.linear_acceleration.y,
+                        imu_msg.linear_acceleration.z) - temp_q.toRotationMatrix() * g_;
+    std::cout << acc << std::endl;
+    Eigen::Vector3d gyr(imu_msg.angular_velocity.x,
+                        imu_msg.angular_velocity.y,
+                        imu_msg.angular_velocity.z);
+
+    imu_init_buff_.emplace_back(acc, gyr);
+  }
+
+  if (imu_init_buff_.size() < max_init_count_) {
+    return false;
+  }
+
+  Eigen::Vector3d acc_cov, gyr_cov;
+  ComputeMeanAndCovDiag(
+      imu_init_buff_,
+      mean_acc_,
+      acc_cov,
+      [](const std::pair<Eigen::Vector3d, Eigen::Vector3d>& imu_data) {
+        return imu_data.first;
+      });
+  ComputeMeanAndCovDiag(
+      imu_init_buff_,
+      mean_gyr_,
+      gyr_cov,
+      [](const std::pair<Eigen::Vector3d, Eigen::Vector3d>& imu_data) {
+        return imu_data.second;
+      });
 
   Eigen::Quaterniond temp_q(back_imu.orientation.w,
                             back_imu.orientation.x,
@@ -942,11 +989,12 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
 
   curr_state_.pose.block<3, 1>(0, 3).setZero();
 
+  // init velocity
   curr_state_.vel.setZero();
-
-//   curr_state_.bg.setZero();
-
-//   curr_state_.ba.setZero();
+  // init bg
+  curr_state_.bg = mean_gyr_;
+  // init ba
+  curr_state_.ba = mean_acc_;
 
   prev_state_ = curr_state_;
 
