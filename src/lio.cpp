@@ -920,9 +920,6 @@ bool LIO::StaticInitialization(SensorMeasurement& sensor_measurement) {
 }
 
 bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
-//   if(!StaticInitialization(sensor_measurement)) {
-//     return false;
-//   }
   const auto& back_imu = sensor_measurement.imu_buff_.back();
   if ((back_imu.orientation.w * back_imu.orientation.w +
        back_imu.orientation.x * back_imu.orientation.x +
@@ -940,7 +937,7 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
             sensor_measurement.imu_buff_.front().orientation.x,
             sensor_measurement.imu_buff_.front().orientation.y,
             sensor_measurement.imu_buff_.front().orientation.z);
-    imu_init_buff_.emplace_back(Eigen::Vector3d(acc.x, acc.y, acc.z) - temp_q.toRotationMatrix() * g_,
+    imu_init_buff_.emplace_back(Eigen::Vector3d(acc.x, acc.y, acc.z) - temp_q.toRotationMatrix().transpose() * g_,
                                 Eigen::Vector3d(gyr.x, gyr.y, gyr.z));
   }
 
@@ -951,7 +948,7 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
             imu_msg.orientation.z);
     Eigen::Vector3d acc = Eigen::Vector3d(imu_msg.linear_acceleration.x,
                         imu_msg.linear_acceleration.y,
-                        imu_msg.linear_acceleration.z) - temp_q.toRotationMatrix() * g_;
+                        imu_msg.linear_acceleration.z) - temp_q.toRotationMatrix().transpose() * g_;
     std::cout << acc << std::endl;
     Eigen::Vector3d gyr(imu_msg.angular_velocity.x,
                         imu_msg.angular_velocity.y,
@@ -980,7 +977,7 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
         return imu_data.second;
       });
 
-  Eigen::Quaterniond temp_q(back_imu.orientation.w,
+  temp_q = Eigen::Quaterniond(back_imu.orientation.w,
                             back_imu.orientation.x,
                             back_imu.orientation.y,
                             back_imu.orientation.z);
