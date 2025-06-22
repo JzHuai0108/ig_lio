@@ -809,6 +809,7 @@ bool LIO::StaticInitialization(SensorMeasurement& sensor_measurement) {
     const auto& gyr = sensor_measurement.imu_buff_.front().angular_velocity;
     imu_init_buff_.emplace_back(Eigen::Vector3d(acc.x, acc.y, acc.z),
                                 Eigen::Vector3d(gyr.x, gyr.y, gyr.z));
+    first_imu_frame_ = false;
   }
 
   for (const auto& imu_msg : sensor_measurement.imu_buff_) {
@@ -939,6 +940,7 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
             sensor_measurement.imu_buff_.front().orientation.z);
     imu_init_buff_.emplace_back(Eigen::Vector3d(acc.x, acc.y, acc.z) - temp_q.toRotationMatrix().transpose() * g_,
                                 Eigen::Vector3d(gyr.x, gyr.y, gyr.z));
+    first_imu_frame_ = false;
   }
 
   for (const auto& imu_msg : sensor_measurement.imu_buff_) {
