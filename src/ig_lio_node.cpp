@@ -455,9 +455,14 @@ void Process() {
         std::string all_points_dir(pcd_path.string() + "/" + std::to_string(lidar_timestamp) + std::string(".pcd"));
         pcl::PCDWriter pcd_writer;
         LOG(INFO) << "current scan in " << pcd_save_frame << " frame saved to " << all_points_dir;
-        if (pcd_save_frame == "body") {
+        if (pcd_save_frame == "imu" || pcd_save_frame == "lidar") {
           CloudPtr pcl_wait_save_body(new CloudType());
-          Eigen::Matrix4d T_w_b = result_pose.transpose();
+          Eigen::Matrix4d T_w_b = Eigen::Matrix4d::Identity();
+          if (pcd_save_frame == "imu") {
+            T_w_b = result_pose.transpose();
+          } else if (pcd_save_frame == "lidar") {
+            T_w_b = (result_pose * T_imu_lidar).transpose();
+          } 
           pcl::transformPointCloud(*pcl_wait_save, *pcl_wait_save_body, T_w_b);
           pcd_writer.writeBinary(all_points_dir, *pcl_wait_save_body);
           pcl_wait_save_body->clear();

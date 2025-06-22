@@ -37,4 +37,4 @@ R_imu_lidar: [ 0, 0, 1,
 
 pcd_save_en: true
 pcd_save_interval: 20                 # how many LiDAR frames saved in each pcd file, -1: all;
-pcd_save_frame: "body"
+pcd_save_frame: "lidar"               # "world", "imu", "lidar"

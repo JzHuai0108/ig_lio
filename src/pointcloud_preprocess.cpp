@@ -71,8 +71,7 @@ void PointCloudPreprocess::ProcessLivox(
     std::for_each(index.begin(), index.end(), [&](const uint &i) {
         if ((cloud_origin.at(i).line < num_scans_) &&
             (i % config_.point_filter_num == 0) && !HasInf(cloud_origin.at(i)) &&
-            !HasNan(cloud_origin.at(i)) &&
-            ((cloud_origin.at(i).tag & 0x30) == 0x10 || (cloud_origin.at(i).tag & 0x30) == 0x00)) {
+            !HasNan(cloud_origin.at(i))) {
           PointType point;
           point.x = cloud_origin.at(i).x;
           point.y = cloud_origin.at(i).y;
