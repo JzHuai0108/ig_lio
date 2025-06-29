@@ -43,9 +43,12 @@ git clone https://github.com/Livox-SDK/Livox-SDK2
 cd Livox-SDK
 mkdir build
 cd build
-cmake ..
-make -j
-sudo make install
+
+# conda activate ros_env # only needed if to build in a conda env
+cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/Documents/lidar/lio_ws/devel/
+make -j4
+make install
+
 ```
 
 :five: **glog**
@@ -62,8 +65,13 @@ mkdir src
 cd src
 git clone https://github.com/zijiechenrobotics/ig_lio_workspace.git
 git clone https://github.com/Livox-SDK/livox_ros_driver2
-cd ..
-catkin_make
+cd livox_ros_driver2
+# build in conda
+conda activate ros_env # or mamba activate ros_env
+./build.sh ROS1 "$HOME/Documents/lidar/lio_ws/devel" "$HOME/Documents/lidar/lio_ws/devel;$HOME/miniconda3/envs/ros_env"
+# alternatively, build in ubuntu 20 system
+./build.sh ROS1 "$HOME/Documents/lidar/lio_ws/devel" "$HOME/Documents/lidar/lio_ws/devel"
+
 ```
 
 ## 2. Run

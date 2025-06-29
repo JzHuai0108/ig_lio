@@ -24,7 +24,7 @@ enable_outlier_rejection: true
 
 gravity: 9.80665
 init_ori_cov: 0.0001
-inti_pos_cov: 0.0001
+init_pos_cov: 0.0001
 init_vel_cov: 100.0
 init_ba_cov: 0.000001
 init_bg_cov: 0.000001

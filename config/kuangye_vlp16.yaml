@@ -5,7 +5,7 @@ min_radius: 1.0
 max_radius: 100.0
 point_filter_num: 4
 time_scale: 1000.0 # nclt: 0.001 other: 1000.0
-enable_ahrs_initalization: false
+enable_ahrs_initalization: true
 enable_acc_correct: false
 
 scan_resolution: 0.5
@@ -24,7 +24,7 @@ enable_outlier_rejection: true
 
 gravity: 9.80665
 init_ori_cov: 0.0001
-inti_pos_cov: 0.0001
+init_pos_cov: 0.0001
 init_vel_cov: 100.0
 init_ba_cov: 0.0001
 init_bg_cov: 0.0001
@@ -36,5 +36,5 @@ R_imu_lidar: [ 0, 0, 1,
               -1, 0, 0]
 
 pcd_save_en: true
-pcd_save_interval: 20                 # how many LiDAR frames saved in each pcd file, -1: all;
+pcd_save_interval: 1                 # how many LiDAR frames saved in each pcd file, -1: all;
 pcd_save_frame: "lidar"               # "world", "imu", "lidar"

@@ -40,7 +40,7 @@ struct SensorMeasurement {
   double lidar_start_time_{0.0};
   // The time of the last laser point in the scan
   double lidar_end_time_{0.0};
-  CloudPtr cloud_ptr_{};
+  CloudPtr cloud_ptr_{}; // lidar point in the imu frame.
   std::deque<sensor_msgs::Imu> imu_buff_;
 
   Eigen::Matrix4d gnss_pose_ = Eigen::Matrix4d::Identity();
@@ -228,6 +228,7 @@ class LIO {
   double lio_time_{0.0};
   bool lio_init_{false};
 
+  // the applied force to counteract the gravity
   Eigen::Vector3d g_ = Eigen::Vector3d(0.0, 0.0, 9.81);
 
   State curr_state_;
@@ -236,6 +237,8 @@ class LIO {
   Eigen::Vector3d acc_0_ = Eigen::Vector3d::Zero();
   Eigen::Vector3d gyr_0_ = Eigen::Vector3d::Zero();
 
+  // covariance of rotation, position, velocity, ba and bg.
+  // note the covariance of rotation error is in the IMU frame per CorrectState().
   Eigen::Matrix<double, 15, 15> P_ = Eigen::Matrix<double, 15, 15>::Zero();
   Eigen::Matrix<double, 15, 15> F_ = Eigen::Matrix<double, 15, 15>::Zero();
   Eigen::Matrix<double, 15, 18> B_ = Eigen::Matrix<double, 15, 18>::Zero();
@@ -269,5 +272,7 @@ class LIO {
   size_t effect_const_num_{0};
   double ava_effect_feat_num_{0.0};
 };
+
+Eigen::Matrix4d SE3Inverse(const Eigen::Matrix4d& T);
 
 #endif

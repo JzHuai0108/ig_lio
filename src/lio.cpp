@@ -91,8 +91,7 @@ bool LIO::MeasurementUpdate(SensorMeasurement& sensor_measurement) {
 
           last_keyframe_pose_ = curr_state_.pose;
         } else {
-          Eigen::Matrix4d delta_p =
-              last_keyframe_pose_.inverse() * curr_state_.pose;
+          Eigen::Matrix4d delta_p = SE3Inverse(last_keyframe_pose_) * curr_state_.pose;
           // The keyframe strategy ensures an appropriate spatial pattern of the
           // points in each voxel
           if (effect_feat_num_ < 1000 ||
@@ -670,7 +669,7 @@ bool LIO::ErrorStateUpdate(const double dt,
   Eigen::Vector3d a0 = acc_0 - curr_state_.ba;
   Eigen::Vector3d a1 = acc_1 - curr_state_.ba;
 
-  Eigen::Matrix3d w_x = Sophus::SO3d::hat(w).matrix();
+  // Eigen::Matrix3d w_x = Sophus::SO3d::hat(w).matrix();
   Eigen::Matrix3d a0_x = Sophus::SO3d::hat(a0).matrix();
   Eigen::Matrix3d a1_x = Sophus::SO3d::hat(a1).matrix();
   Eigen::Matrix3d I_w_x = Sophus::SO3d::exp(-w * dt).matrix();
@@ -1067,4 +1066,15 @@ bool LIO::ComputeFinalCovariance(const Eigen::Matrix<double, 15, 1>& delta_x) {
 
 bool LIO::IsConverged(const Eigen::Matrix<double, 15, 1>& delta_x) {
   return delta_x.lpNorm<Eigen::Infinity>() < transformation_epsilon_;
+}
+
+Eigen::Matrix4d SE3Inverse(const Eigen::Matrix4d& T) {
+  Eigen::Matrix3d R = T.block<3,3>(0,0);
+  Eigen::Vector3d t = T.block<3,1>(0,3);
+  Eigen::Matrix4d T_inv = Eigen::Matrix4d::Identity();
+
+  T_inv.block<3,3>(0,0) = R.transpose();
+  T_inv.block<3,1>(0,3) = -R.transpose() * t;
+
+  return T_inv;
 }
