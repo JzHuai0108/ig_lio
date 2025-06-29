@@ -27,6 +27,14 @@ bool enable_undistort = true;
 bool enable_ahrs_initalization = false;
 Eigen::Matrix4d T_imu_lidar;
 
+// parameters used to save pcds
+fs::path pcd_path;
+bool pcd_save_en = false;
+std::string pcd_save_frame = "world";
+int pcd_save_interval = -1;
+static int scan_wait_num = 0;
+CloudType::Ptr pcl_wait_save{new CloudType()};
+
 // parameters used to synchronize livox time with the external imu
 double timediff_lidar_wrt_imu = 0.0;
 double lidar_timestamp = 0.0;
@@ -403,7 +411,11 @@ void Process() {
   // Setp 4: Measurement Update
   timer.Evaluate([&] { lio_ptr->MeasurementUpdate(sensor_measurement); },
                  "measurement update");
-
+  Eigen::Vector3d curr_ba = lio_ptr->GetCurrentBa();
+  Eigen::Vector3d curr_bg = lio_ptr->GetCurrentBg();
+  Eigen::Vector3d curr_vel = lio_ptr->GetCurrentVel();
+  Eigen::Vector3d curr_g = lio_ptr->GetCurrentG();
+  Eigen::Matrix<double, 15, 15> curr_P = lio_ptr->GetCurrentP();
   LOG(INFO) << "iter_num: " << lio_ptr->GetFinalIterations() << std::endl
             << "ba: " << lio_ptr->GetCurrentBa().transpose()
             << " ba_norm: " << lio_ptr->GetCurrentBa().norm()
@@ -433,11 +445,36 @@ void Process() {
   tf_broadcaster.sendTransform(tf::StampedTransform(
       tf::Transform(q_tf, t_tf), odom_msg.header.stamp, "world", "base_link"));
   // publish dense scan
-  CloudPtr trans_cloud(new CloudType());
+  CloudPtr trans_cloud_world(new CloudType());
   pcl::transformPointCloud(
-      *sensor_measurement.cloud_ptr_, *trans_cloud, result_pose);
+  *sensor_measurement.cloud_ptr_, *trans_cloud_world, result_pose);
+  if (pcd_save_en) {
+    *pcl_wait_save += *trans_cloud_world;
+    scan_wait_num++;
+    if (pcl_wait_save->size() > 0 && pcd_save_interval > 0 && scan_wait_num >= pcd_save_interval) {
+        std::string all_points_dir(pcd_path.string() + "/" + std::to_string(lidar_timestamp) + std::string(".pcd"));
+        pcl::PCDWriter pcd_writer;
+        LOG(INFO) << "current scan in " << pcd_save_frame << " frame saved to " << all_points_dir;
+        if (pcd_save_frame == "imu" || pcd_save_frame == "lidar") {
+          CloudPtr pcl_wait_save_body(new CloudType());
+          Eigen::Matrix4d T_w_b = Eigen::Matrix4d::Identity();
+          if (pcd_save_frame == "imu") {
+            T_w_b = result_pose.transpose();
+          } else if (pcd_save_frame == "lidar") {
+            T_w_b = (result_pose * T_imu_lidar).transpose();
+          } 
+          pcl::transformPointCloud(*pcl_wait_save, *pcl_wait_save_body, T_w_b);
+          pcd_writer.writeBinary(all_points_dir, *pcl_wait_save_body);
+          pcl_wait_save_body->clear();
+        } else {
+          pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
+        }
+        pcl_wait_save->clear();
+        scan_wait_num = 0;
+    }
+  }
   sensor_msgs::PointCloud2 scan_msg;
-  pcl::toROSMsg(*trans_cloud, scan_msg);
+  pcl::toROSMsg(*trans_cloud_world, scan_msg);
   scan_msg.header.frame_id = "world";
   scan_msg.header.stamp = ros::Time(sensor_measurement.lidar_end_time_);
   current_scan_pub.publish(scan_msg);
@@ -523,6 +560,13 @@ void Process() {
                 << std::setprecision(15) << lio_pose(0, 3) << " "
                 << lio_pose(1, 3) << " " << lio_pose(2, 3) << " " << lio_q.x()
                 << " " << lio_q.y() << " " << lio_q.z() << " " << lio_q.w()
+                << std::setprecision(6)
+                << " " << curr_vel(0)  << " " << curr_vel(1)  << " " << curr_vel(2)
+                << " " << curr_ba(0)   << " " << curr_ba(1)   << " " << curr_ba(2)
+                << " " << curr_bg(0)   << " " << curr_bg(1)   << " " << curr_bg(2)
+                << " 0 0 " << -curr_g(2)
+                << " " << curr_P(0, 0) << " " << curr_P(1, 1) << " " << curr_P(2, 2)
+                << " " << curr_P(3, 3) << " " << curr_P(4, 4) << " " << curr_P(5, 5)
                 << std::endl;
   } else {
     delay_count++;
@@ -557,6 +601,8 @@ int main(int argc, char** argv) {
     lidar_type = LidarType::OUSTER;
   } else if (lidar_type_string == "livox") {
     lidar_type = LidarType::LIVOX;
+  } else if (lidar_type_string == "livox_ros") {
+    lidar_type = LidarType::LIVOX_ROS;
   } else {
     LOG(ERROR) << "erro lidar type!";
     exit(0);
@@ -617,6 +663,9 @@ int main(int argc, char** argv) {
   double min_radius, max_radius;
   nh.param<double>("min_radius", min_radius, 1.0);
   nh.param<double>("max_radius", max_radius, 1.0);
+  nh.param<bool>("pcd_save_en", pcd_save_en, false);
+  nh.param<std::string>("pcd_save_frame", pcd_save_frame, "world");
+  nh.param<int>("pcd_save_interval", pcd_save_interval, -1.0);
 
   LOG(INFO) << "scan_resoultion: " << scan_resolution << std::endl
             << "voxel_map_resolution: " << voxel_map_resolution << std::endl
@@ -696,6 +745,11 @@ int main(int argc, char** argv) {
 
   voxel_filter.setLeafSize(0.5, 0.5, 0.5);
 
+  pcd_path = fs::path(package_path) / "pcd";
+  if (!fs::exists(pcd_path)) {
+    fs::create_directories(pcd_path);	
+  }
+
   // save trajectory
   fs::path result_path = fs::path(package_path) / "result" / "lio_odom.txt";
   if (!fs::exists(result_path.parent_path())) {
@@ -719,6 +773,11 @@ int main(int argc, char** argv) {
     Process();
     rate.sleep();
   }
-
+  if (pcl_wait_save->size() > 0 && pcd_save_en && pcd_save_interval <= 0) {
+    std::string all_points_dir(pcd_path.string() + "/all_scans.pcd");
+    pcl::PCDWriter pcd_writer;
+    LOG(INFO) << "current scan saved to " << all_points_dir;
+    pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
+  }
   timer.PrintAll();
 }

@@ -41,10 +41,47 @@ void PointCloudPreprocess::Process(
   case LidarType::OUSTER:
     ProcessOuster(msg, cloud_out);
     break;
+  case LidarType::LIVOX_ROS:
+    ProcessLivox(msg, cloud_out);
+    break;
   default:
     LOG(INFO) << "Error LiDAR Type!!!" << std::endl;
     exit(0);
   }
+}
+
+void PointCloudPreprocess::ProcessLivox(
+  const sensor_msgs::PointCloud2::ConstPtr& msg,
+  pcl::PointCloud<PointType>::Ptr& cloud_out) {
+  pcl::PointCloud<LivoxRosPointXYZIRT> cloud_origin;
+  pcl::fromROSMsg(*msg, cloud_origin);
+    cloud_out->clear();
+    
+    pcl::fromROSMsg(*msg, cloud_origin);
+    int plsize = cloud_origin.size();
+
+    cloud_out->reserve(plsize);
+
+    std::vector<bool> is_valid_pt(plsize, false);
+    std::vector<uint> index(plsize - 1);
+    for (uint i = 0; i < plsize - 1; ++i) {
+        index[i] = i + 1;  // 从1开始
+    }
+
+    std::for_each(index.begin(), index.end(), [&](const uint &i) {
+        if ((cloud_origin.at(i).line < num_scans_) &&
+            (i % config_.point_filter_num == 0) && !HasInf(cloud_origin.at(i)) &&
+            !HasNan(cloud_origin.at(i))) {
+          PointType point;
+          point.x = cloud_origin.at(i).x;
+          point.y = cloud_origin.at(i).y;
+          point.z = cloud_origin.at(i).z;
+          point.intensity = cloud_origin.at(i).intensity;
+          // Note we changed livox_ros_driver2 to store the offset_time of unit ns in the timestamp field.
+          point.curvature = float(cloud_origin.at(i).timestamp / 1000000.0); // use curvature as time of each laser points, curvature unit: ms
+          cloud_out->push_back(point);
+        }
+    });
 }
 
 void PointCloudPreprocess::ProcessVelodyne(
