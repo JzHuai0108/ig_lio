@@ -113,11 +113,11 @@ bool LIO::MeasurementUpdate(SensorMeasurement& sensor_measurement) {
 
   ava_effect_feat_num_ += (effect_feat_num_ - ava_effect_feat_num_) /
                           static_cast<double>(lidar_frame_count_);
-  LOG(INFO) << "curr_feat_num: " << effect_feat_num_
-            << " ava_feat_num: " << ava_effect_feat_num_
-            << " keyframe_count: " << keyframe_count_
-            << " lidar_frame_count: " << lidar_frame_count_
-            << " grid_size: " << voxel_map_ptr_->GetVoxelMapSize();
+  VLOG(2) << "curr_feat_num: " << effect_feat_num_
+          << " ava_feat_num: " << ava_effect_feat_num_
+          << " keyframe_count: " << keyframe_count_
+          << " lidar_frame_count: " << lidar_frame_count_
+          << " grid_size: " << voxel_map_ptr_->GetVoxelMapSize();
   return true;
 }
 
@@ -950,7 +950,6 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
     Eigen::Vector3d acc = Eigen::Vector3d(imu_msg.linear_acceleration.x,
                         imu_msg.linear_acceleration.y,
                         imu_msg.linear_acceleration.z) - temp_q.toRotationMatrix().transpose() * g_;
-    std::cout << acc << std::endl;
     Eigen::Vector3d gyr(imu_msg.angular_velocity.x,
                         imu_msg.angular_velocity.y,
                         imu_msg.angular_velocity.z);
@@ -990,7 +989,7 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
   // init velocity
   curr_state_.vel.setZero();
   // init bg
-  curr_state_.bg = mean_gyr_;
+  curr_state_.bg.setZero();
   // init ba
   curr_state_.ba = mean_acc_;
 

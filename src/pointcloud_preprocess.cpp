@@ -64,7 +64,7 @@ void PointCloudPreprocess::ProcessLivox(
 
     std::vector<bool> is_valid_pt(plsize, false);
     std::vector<uint> index(plsize - 1);
-    for (uint i = 0; i < plsize - 1; ++i) {
+    for (int i = 0; i < plsize - 1; ++i) {
         index[i] = i + 1;  // 从1开始
     }
 

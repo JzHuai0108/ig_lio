@@ -200,8 +200,8 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
     i = j;
   }
 
-  LOG(INFO) << "total_point " << input_cloud_ptr->size()
-            << " error_point: " << error_grids;
+  VLOG(3) << "total_point " << input_cloud_ptr->size()
+          << " error_point: " << error_grids;
   return true;
 }
 

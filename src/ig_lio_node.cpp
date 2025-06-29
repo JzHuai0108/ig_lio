@@ -416,12 +416,12 @@ void Process() {
   Eigen::Vector3d curr_vel = lio_ptr->GetCurrentVel();
   Eigen::Vector3d curr_g = lio_ptr->GetCurrentG();
   Eigen::Matrix<double, 15, 15> curr_P = lio_ptr->GetCurrentP();
-  LOG(INFO) << "iter_num: " << lio_ptr->GetFinalIterations() << std::endl
-            << "ba: " << lio_ptr->GetCurrentBa().transpose()
-            << " ba_norm: " << lio_ptr->GetCurrentBa().norm()
-            << " bg: " << lio_ptr->GetCurrentBg().transpose() * 180.0 / M_PI
-            << " bg_norm: " << lio_ptr->GetCurrentBg().norm() * 180.0 / M_PI
-            << std::endl;
+  VLOG(2) << "iter_num: " << lio_ptr->GetFinalIterations()
+          << "ba(m/s^2): " << lio_ptr->GetCurrentBa().transpose()
+          << " ba_norm: " << lio_ptr->GetCurrentBa().norm()
+          << " bg(deg/s): " << lio_ptr->GetCurrentBg().transpose() * 180.0 / M_PI
+          << " bg_norm: " << lio_ptr->GetCurrentBg().norm() * 180.0 / M_PI
+          << std::endl;
 
   // Setp 5: Send to rviz for visualization
   Eigen::Matrix4d result_pose = lio_ptr->GetCurrentPose();
@@ -470,7 +470,7 @@ void Process() {
       std::string all_points_dir(filename);
 
       pcl::PCDWriter pcd_writer;
-      LOG(INFO) << "Saving current scan in " << pcd_save_frame << " frame to " << all_points_dir;
+      VLOG(2) << "Saving current scan in " << pcd_save_frame << " frame to " << all_points_dir;
 
       if (pcd_save_frame == "imu" || pcd_save_frame == "lidar") {
         CloudPtr pcl_wait_save_body(new CloudType());
@@ -589,7 +589,7 @@ void Process() {
     // Format timestamp: seconds and nanoseconds (for evo compatibility)
     uint32_t sec = static_cast<uint32_t>(sensor_measurement.lidar_end_time_);
     uint32_t nsec = static_cast<uint32_t>((sensor_measurement.lidar_end_time_ - sec) * 1e9);
-
+    Eigen::VectorXd std_diag = curr_P.diagonal().cwiseSqrt();
     // Save trajectory line to stream
     odom_stream << std::fixed
                 << sec << "." << std::setfill('0') << std::setw(9) << nsec << " "  // Timestamp in %d.%09d format
@@ -599,12 +599,11 @@ void Process() {
                 << lio_q.x() << " " << lio_q.y() << " " << lio_q.z() << " " << lio_q.w() << " "
                 << std::setprecision(6)
                 << curr_vel(0) << " " << curr_vel(1) << " " << curr_vel(2) << " "
-                << curr_ba(0)  << " " << curr_ba(1)  << " " << curr_ba(2)  << " "
                 << curr_bg(0)  << " " << curr_bg(1)  << " " << curr_bg(2)  << " "
+                << curr_ba(0)  << " " << curr_ba(1)  << " " << curr_ba(2)  << " "
                 << "0 0 " << -curr_g(2) << " "  // Gravity direction (assuming flat earth Z-down)
-                << curr_P(0, 0) << " " << curr_P(1, 1) << " " << curr_P(2, 2) << " "
-                << curr_P(3, 3) << " " << curr_P(4, 4) << " " << curr_P(5, 5)
-                << std::endl;
+                << std_diag(0) << " " << std_diag(1) << " " << std_diag(2) << " "
+                << std_diag(3) << " " << std_diag(4) << " " << std_diag(5) << std::endl;
   // } else {
   //   delay_count++;
   // }
@@ -620,10 +619,14 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "ig_lio_node");
   ros::NodeHandle nh;
 
-  std::string output_dir;
-  if (!nh.getParam("output_dir", output_dir)) {
-      ROS_ERROR("Failed to load output_dir from param server");
+ if (argc < 3) {
+    std::cerr << "Usage: rosrun ig_lio ig_lio_node <config_file.yaml> <output_dir>" << std::endl;
+    return EXIT_FAILURE;
   }
+
+  std::string config_file = argv[1];
+  std::string output_dir = argv[2];
+
   Logger logger(argc, argv, output_dir);
 
   // init topic
