@@ -6,10 +6,10 @@
 
     <rosparam command="load" file="$(find ig_lio)/config/$(arg configyaml)" />
 
-    <node pkg="ig_lio" type="ig_lio_node" name="ig_lio_node" args="$(arg configyaml) $(arg output_dir)" output="screen"/>
+    <node pkg="ig_lio" type="ig_lio_node" name="ig_lio_node"
+          args="$(find ig_lio)/config/$(arg configyaml) $(arg bagfile) $(arg output_dir)"
+          output="screen" required="true" />
     
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ig_lio)/rviz/lio_show.rviz" />
-
-    <node pkg="rosbag" type="play" name="rosbag_play" args="$(arg bagfile)" output="screen" required="true" />
 
 </launch>

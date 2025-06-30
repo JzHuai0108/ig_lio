@@ -1,4 +1,5 @@
 #include <csignal>
+#include <filesystem>
 #include <fstream>
 #include <mutex>
 
@@ -7,9 +8,13 @@
 #include <nav_msgs/Path.h>
 #include <ros/package.h>
 #include <ros/ros.h>
+#include <rosbag/bag.h>
+#include <rosbag/message_instance.h>
+#include <rosbag/view.h>
+
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
-#include <boost/filesystem.hpp>
+// #include <boost/filesystem.hpp>
 
 #include <pcl/filters/voxel_grid.h>
 
@@ -18,7 +23,7 @@
 #include "ig_lio/pointcloud_preprocess.h"
 #include "ig_lio/timer.h"
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 LidarType lidar_type = LidarType::LIVOX;
 constexpr double kAccScale = 9.80665;
@@ -609,6 +614,25 @@ void Process() {
   // }
 }
 
+
+ros::Time parseTimeStr(const std::string &time_str) {
+    if (time_str.empty()) {
+        return ros::Time(0);
+    }
+    if (time_str == "0") {
+        return ros::Time(0);
+    }
+    size_t pos = time_str.find('.');
+    int secs = std::stoi(time_str.substr(0, pos));
+    size_t nseclen = time_str.size() - pos - 1;
+    if (nseclen < 9) {
+        return ros::Time(secs, std::stoi(time_str.substr(pos + 1)) * std::pow(10, 9 - nseclen));
+    } else {
+        return ros::Time(secs, std::stoi(time_str.substr(pos + 1, 9)));
+    }
+}
+
+
 bool FLAG_EXIT = false;
 void SigHandle(int sig) {
   FLAG_EXIT = true;
@@ -619,13 +643,14 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "ig_lio_node");
   ros::NodeHandle nh;
 
- if (argc < 3) {
-    std::cerr << "Usage: rosrun ig_lio ig_lio_node <config_file.yaml> <output_dir>" << std::endl;
+ if (argc < 4) {
+    std::cerr << "Usage: rosrun ig_lio ig_lio_node <config_file.yaml> <ros1.bag> <output_dir>" << std::endl;
     return EXIT_FAILURE;
   }
 
   std::string config_file = argv[1];
-  std::string output_dir = argv[2];
+  std::string ros1_bagfile = argv[2];
+  std::string output_dir = argv[3];
 
   Logger logger(argc, argv, output_dir);
 
@@ -709,6 +734,11 @@ int main(int argc, char** argv) {
   nh.param<bool>("pcd_save_en", pcd_save_en, false);
   nh.param<std::string>("pcd_save_frame", pcd_save_frame, "world");
   nh.param<int>("pcd_save_interval", pcd_save_interval, -1.0);
+  std::string msg_start_time, msg_end_time;
+  nh.param<std::string>("msg_start_time", msg_start_time, "0");
+  nh.param<std::string>("msg_end_time", msg_end_time, "0");
+  ros::Time msg_start_time_ros = parseTimeStr(msg_start_time);
+  ros::Time msg_end_time_ros = parseTimeStr(msg_end_time);
 
   LOG(INFO) << "scan_resoultion: " << scan_resolution << std::endl
             << "voxel_map_resolution: " << voxel_map_resolution << std::endl
@@ -733,7 +763,9 @@ int main(int argc, char** argv) {
             << "enable_ahrs_initalization: " << enable_ahrs_initalization
             << std::endl
             << "min_radius: " << min_radius << std::endl
-            << "max_radius: " << max_radius;
+            << "max_radius: " << max_radius << std::endl
+            << "msg_start_time: " << msg_start_time_ros << std::endl
+            << "msg_end_time: " << msg_end_time_ros << std::endl;
 
   // 3. load extrinsic
   T_imu_lidar = Eigen::Matrix4d::Identity();
@@ -804,17 +836,58 @@ int main(int argc, char** argv) {
     exit(0);
   }
 
-  // run !!!
-  signal(SIGINT, SigHandle);
-  ros::Rate rate(5000);
-  while (ros::ok()) {
-    if (FLAG_EXIT) {
-      break;
-    }
-    ros::spinOnce();
-    Process();
-    rate.sleep();
+  fs::copy_file(config_file, fs::path(output_dir) / "lio_config.yaml", fs::copy_options::overwrite_existing);
+
+  std::vector<std::string> topics;
+  topics.push_back(lidar_topic);
+  topics.push_back(imu_topic);
+
+  rosbag::Bag bag;
+  try {
+    bag.open(ros1_bagfile, rosbag::bagmode::Read);
+  } catch (const rosbag::BagException& e) {
+    std::cerr << "Failed to open rosbag: " << e.what() << std::endl;
+    return EXIT_FAILURE;
   }
+  rosbag::View view(bag, rosbag::TopicQuery(topics));
+  ros::Duration epsi(0.05);
+  ros::Time min_time_ros = view.getBeginTime();
+  if (msg_start_time_ros > ros::Time())
+      min_time_ros = msg_start_time_ros;
+  ros::Time max_time_ros = view.getEndTime();
+  if (msg_end_time_ros > ros::Time())
+      max_time_ros = msg_end_time_ros;
+  int lid_cnt = 0;
+  int imu_cnt = 0;
+
+  ros::Publisher lidar_publisher = nh.advertise<sensor_msgs::PointCloud2>(lidar_topic, 100);
+  ros::Publisher imu_publisher = nh.advertise<sensor_msgs::Imu>(imu_topic, 5000);
+  signal(SIGINT, SigHandle);
+  for(const rosbag::MessageInstance &m : view) {
+    if (m.getTopic() == lidar_topic) {
+      sensor_msgs::PointCloud2::ConstPtr lidar_msg = m.instantiate<sensor_msgs::PointCloud2>();
+      if (lidar_msg->header.stamp < min_time_ros || lidar_msg->header.stamp > max_time_ros) {
+          continue;
+      }
+      ++lid_cnt;
+      lidar_publisher.publish(lidar_msg);
+      ros::spinOnce();
+      Process();
+    } else if (m.getTopic() == imu_topic) {
+      sensor_msgs::Imu::ConstPtr imu_msg = m.instantiate<sensor_msgs::Imu>();
+      if (imu_msg->header.stamp < min_time_ros || imu_msg->header.stamp > max_time_ros) {
+        continue;
+      }
+      ++imu_cnt;
+      imu_publisher.publish(imu_msg);
+    }
+    if (FLAG_EXIT) break;
+  }
+  bag.close();
+
+  LOG(INFO) << "Finished processing bag file " << ros1_bagfile
+      << ", lidar msgs " << lid_cnt << ", imu msgs " << imu_cnt;
+
   if (pcl_wait_save->size() > 0 && pcd_save_en && pcd_save_interval <= 0) {
     std::string all_points_dir(pcd_path.string() + "/all_scans.pcd");
     pcl::PCDWriter pcd_writer;

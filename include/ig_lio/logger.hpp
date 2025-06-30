@@ -6,13 +6,13 @@
 
 #pragma once
 
-// #include <filesystem>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
 #include <stdlib.h>
 
-#include <boost/filesystem.hpp>
+// #include <boost/filesystem.hpp>
 
 #include <glog/logging.h>
 
@@ -38,10 +38,10 @@ Logger::Logger(int argc, char** argv) {
   FLAGS_alsologtostderr = true;
   FLAGS_log_prefix = true;
 
-  auto current_path = boost::filesystem::current_path();
+  auto current_path = std::filesystem::current_path();
   auto log_path = current_path / "log";
-  if (!boost::filesystem::exists(log_path)) {
-    boost::filesystem::create_directories(log_path);
+  if (!std::filesystem::exists(log_path)) {
+    std::filesystem::create_directories(log_path);
   }
 
   std::cout << "log path: " << log_path << std::endl;
@@ -61,9 +61,9 @@ Logger::Logger(int argc, char** argv, std::string current_path) {
   FLAGS_alsologtostderr = true;
   FLAGS_log_prefix = true;
 
-  auto log_path = boost::filesystem::path(current_path) / "log";
-  if (!boost::filesystem::exists(log_path)) {
-    boost::filesystem::create_directories(log_path);
+  auto log_path = std::filesystem::path(current_path) / "log";
+  if (!std::filesystem::exists(log_path)) {
+    std::filesystem::create_directories(log_path);
   }
 
   std::cout << "log path: " << log_path << std::endl;
