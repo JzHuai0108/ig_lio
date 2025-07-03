@@ -4,12 +4,13 @@
     <arg name="bagfile" default="" />
     <arg name="output_dir" default="$(find ig_lio)/output" />
 
-    <rosparam command="load" file="$(find ig_lio)/config/$(arg configyaml)" />
+    <!-- <rosparam command="load" file="$(find ig_lio)/config/$(arg configyaml)" /> -->
+    <rosparam command="load" file="$(arg configyaml)" />
 
     <node pkg="ig_lio" type="ig_lio_node" name="ig_lio_node"
-          args="$(find ig_lio)/config/$(arg configyaml) $(arg bagfile) $(arg output_dir)"
+          args="$(arg configyaml) $(arg bagfile) $(arg output_dir)"
           output="screen" required="true" />
-    
+
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ig_lio)/rviz/lio_show.rviz" />
 
 </launch>

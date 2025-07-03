@@ -14,7 +14,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 
-#include <livox_ros_driver2/CustomMsg.h>
+#include <ig_lio/CustomMsg.h>
 
 #include "point_type.h"
 
@@ -98,7 +98,7 @@ class PointCloudPreprocess {
 
   ~PointCloudPreprocess() = default;
 
-  void Process(const livox_ros_driver2::CustomMsg::ConstPtr& msg,
+  void Process(const ig_lio::CustomMsg::ConstPtr& msg,
                pcl::PointCloud<PointType>::Ptr& cloud_out,
                const double last_start_time = 0.0);
 
@@ -121,7 +121,7 @@ class PointCloudPreprocess {
   void ProcessOuster(const sensor_msgs::PointCloud2::ConstPtr& msg,
                      pcl::PointCloud<PointType>::Ptr& cloud_out);
 
-  void ProcessLivox(const sensor_msgs::PointCloud2::ConstPtr& msg,
+  void ProcessLivoxPC2(const sensor_msgs::PointCloud2::ConstPtr& msg,
                     pcl::PointCloud<PointType>::Ptr& cloud_out);
  
   int num_scans_ = 128;

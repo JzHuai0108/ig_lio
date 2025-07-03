@@ -15,9 +15,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  message_generation
   roslib
   pcl_ros
-  livox_ros_driver2
 )
 
 ## System dependencies are found with CMake's conventions
@@ -31,10 +31,20 @@ include(cmake/glog.cmake)
 # sophus
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/sophus)
 
+add_message_files(FILES
+  CustomPoint.msg
+  CustomMsg.msg
+)
+
+## Generate added messages and services with any dependencies listed here
+generate_messages(DEPENDENCIES
+  std_msgs
+)
+
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES gicp_lio
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -70,17 +80,17 @@ install(TARGETS ${PROJECT_NAME}_node
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
-  PATTERN ".svn" EXCLUDE
+  PATTERN ".git" EXCLUDE
 )
 
 install(DIRECTORY launch/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
-  PATTERN ".svn" EXCLUDE)
+  PATTERN ".git" EXCLUDE)
 
 install(DIRECTORY config/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
-  PATTERN ".svn" EXCLUDE)
+  PATTERN ".git" EXCLUDE)
 
 install(DIRECTORY rviz/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/rviz
-  PATTERN ".svn" EXCLUDE)
+  PATTERN ".git" EXCLUDE)

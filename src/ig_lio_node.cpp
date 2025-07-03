@@ -35,7 +35,7 @@ Eigen::Matrix4d T_imu_lidar;
 // parameters used to save pcds
 fs::path pcd_path;
 bool pcd_save_en = false;
-std::string pcd_save_frame = "world";
+std::string pcd_save_frame = "lidar";
 int pcd_save_interval = -1;
 static int scan_wait_num = 0;
 CloudType::Ptr pcl_wait_save{new CloudType()};
@@ -139,7 +139,7 @@ void CloudCallBack(const sensor_msgs::PointCloud2::ConstPtr& msg) {
 }
 
 // process livox
-void LivoxCloudCallBack(const livox_ros_driver2::CustomMsg::ConstPtr& msg) {
+void LivoxCloudCallBack(const ig_lio::CustomMsg::ConstPtr& msg) {
   static double last_lidar_timestamp = 0.0;
   static CloudPtr temp_cloud_ptr(new CloudType());
   static bool first_scan_flag = true;
@@ -688,7 +688,7 @@ int main(int argc, char** argv) {
   int point_filter_num;
   nh.param<double>("time_scale", time_scale, 1.0);
   nh.param<int>("point_filter_num", point_filter_num, 1);
-  LOG(INFO) << "time_scale: " << time_scale << std::endl
+  LOG(INFO) << "Velodyne time_scale: " << time_scale << std::endl
             << "point_filter_num: " << point_filter_num;
   PointCloudPreprocess::Config cloud_preprocess_config;
   cloud_preprocess_config.lidar_type = lidar_type;
@@ -732,7 +732,7 @@ int main(int argc, char** argv) {
   nh.param<double>("min_radius", min_radius, 1.0);
   nh.param<double>("max_radius", max_radius, 1.0);
   nh.param<bool>("pcd_save_en", pcd_save_en, false);
-  nh.param<std::string>("pcd_save_frame", pcd_save_frame, "world");
+  nh.param<std::string>("pcd_save_frame", pcd_save_frame, "lidar");
   nh.param<int>("pcd_save_interval", pcd_save_interval, -1.0);
   std::string msg_start_time, msg_end_time;
   nh.param<std::string>("msg_start_time", msg_start_time, "0");
@@ -860,17 +860,31 @@ int main(int argc, char** argv) {
   int lid_cnt = 0;
   int imu_cnt = 0;
 
-  ros::Publisher lidar_publisher = nh.advertise<sensor_msgs::PointCloud2>(lidar_topic, 100);
+  ros::Publisher lidar_publisher;
+  if (lidar_type == LidarType::LIVOX) {
+    lidar_publisher = nh.advertise<ig_lio::CustomMsg>(lidar_topic, 100);
+  } else {
+    lidar_publisher = nh.advertise<sensor_msgs::PointCloud2>(lidar_topic, 100);
+  }
   ros::Publisher imu_publisher = nh.advertise<sensor_msgs::Imu>(imu_topic, 5000);
   signal(SIGINT, SigHandle);
   for(const rosbag::MessageInstance &m : view) {
     if (m.getTopic() == lidar_topic) {
-      sensor_msgs::PointCloud2::ConstPtr lidar_msg = m.instantiate<sensor_msgs::PointCloud2>();
-      if (lidar_msg->header.stamp < min_time_ros || lidar_msg->header.stamp > max_time_ros) {
+      if (lidar_type == LidarType::LIVOX) {
+        ig_lio::CustomMsg::ConstPtr lidar_msg = m.instantiate<ig_lio::CustomMsg>();
+        if (lidar_msg->header.stamp < min_time_ros || lidar_msg->header.stamp > max_time_ros) {
           continue;
+        }
+        ++lid_cnt;
+        lidar_publisher.publish(lidar_msg);
+      } else {
+        sensor_msgs::PointCloud2::ConstPtr lidar_msg = m.instantiate<sensor_msgs::PointCloud2>();
+        if (lidar_msg->header.stamp < min_time_ros || lidar_msg->header.stamp > max_time_ros) {
+          continue;
+        }
+        ++lid_cnt;
+        lidar_publisher.publish(lidar_msg);
       }
-      ++lid_cnt;
-      lidar_publisher.publish(lidar_msg);
       ros::spinOnce();
       Process();
     } else if (m.getTopic() == imu_topic) {

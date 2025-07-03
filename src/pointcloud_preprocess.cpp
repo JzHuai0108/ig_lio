@@ -4,7 +4,7 @@
 extern Timer timer;
 
 void PointCloudPreprocess::Process(
-    const livox_ros_driver2::CustomMsg::ConstPtr& msg,
+    const ig_lio::CustomMsg::ConstPtr& msg,
     pcl::PointCloud<PointType>::Ptr& cloud_out,
     const double last_start_time) {
   double time_offset =
@@ -42,7 +42,7 @@ void PointCloudPreprocess::Process(
     ProcessOuster(msg, cloud_out);
     break;
   case LidarType::LIVOX_ROS:
-    ProcessLivox(msg, cloud_out);
+    ProcessLivoxPC2(msg, cloud_out);
     break;
   default:
     LOG(INFO) << "Error LiDAR Type!!!" << std::endl;
@@ -50,7 +50,7 @@ void PointCloudPreprocess::Process(
   }
 }
 
-void PointCloudPreprocess::ProcessLivox(
+void PointCloudPreprocess::ProcessLivoxPC2(
   const sensor_msgs::PointCloud2::ConstPtr& msg,
   pcl::PointCloud<PointType>::Ptr& cloud_out) {
   pcl::PointCloud<LivoxRosPointXYZIRT> cloud_origin;
