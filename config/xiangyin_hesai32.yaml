@@ -1,12 +1,13 @@
-lidar_topic: /velodyne_points
-imu_topic: /imu/data
-lidar_type: velodyne # livox velodyne ouster
+lidar_topic: /points
+imu_topic: /imu
+lidar_type: hesai_xiangyin # livox velodyne ouster
 min_radius: 1.0
 max_radius: 100.0
 point_filter_num: 4
-time_scale: 1000.0 # nclt: 0.001 other: 1000.0
-enable_ahrs_initalization: true
+time_scale: 1000.0
+enable_ahrs_initalization: false
 enable_acc_correct: false
+enable_gyro_correct: true
 
 scan_resolution: 0.5
 voxel_map_resolution: 0.5
@@ -29,11 +30,11 @@ init_vel_cov: 10.0
 init_ba_cov: 0.0001
 init_bg_cov: 0.0001
 
-# kuangye rotating vlp16
-t_imu_lidar : [-0.0119, -0.00802, -0.06139]
-R_imu_lidar: [ 0, 0, 1,
-               0, 1, 0,
-              -1, 0, 0]
+# xiangyin hesai 32
+t_imu_lidar: [ -0.0033, 0.06357, 0.08515]
+R_imu_lidar: [0.999743, 0.0152831,  -0.0167245,
+              -0.0152252,  0.999878,   0.0035855,
+              0.0167772,  -0.00332994,  0.999854 ]
 
 pcd_save_en: true
 pcd_save_interval: 1                 # how many LiDAR frames saved in each pcd file, -1: all;

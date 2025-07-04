@@ -27,7 +27,10 @@ namespace fs = std::filesystem;
 
 LidarType lidar_type = LidarType::LIVOX;
 constexpr double kAccScale = 9.80665;
-bool enable_acc_correct = true;
+constexpr double kGyroScale = M_PI / 180.0; // Convert degrees to radians
+bool enable_acc_correct = false;
+bool enable_gyro_correct = false;
+
 bool enable_undistort = true;
 bool enable_ahrs_initalization = false;
 Eigen::Matrix4d T_imu_lidar;
@@ -104,6 +107,15 @@ void ImuCallBack(const sensor_msgs::Imu::ConstPtr& msg_ptr) {
       imu_msg.linear_acceleration.x = imu_msg.linear_acceleration.x * kAccScale;
       imu_msg.linear_acceleration.y = imu_msg.linear_acceleration.y * kAccScale;
       imu_msg.linear_acceleration.z = imu_msg.linear_acceleration.z * kAccScale;
+    }
+
+    if (enable_gyro_correct) {
+      imu_msg.angular_velocity.x =
+          imu_msg.angular_velocity.x * kGyroScale; // Convert to rad/s
+      imu_msg.angular_velocity.y =
+          imu_msg.angular_velocity.y * kGyroScale; // Convert to rad/s
+      imu_msg.angular_velocity.z =
+          imu_msg.angular_velocity.z * kGyroScale; // Convert to rad/s
     }
 
     imu_buff.push_back(imu_msg);
@@ -614,25 +626,6 @@ void Process() {
   // }
 }
 
-
-ros::Time parseTimeStr(const std::string &time_str) {
-    if (time_str.empty()) {
-        return ros::Time(0);
-    }
-    if (time_str == "0") {
-        return ros::Time(0);
-    }
-    size_t pos = time_str.find('.');
-    int secs = std::stoi(time_str.substr(0, pos));
-    size_t nseclen = time_str.size() - pos - 1;
-    if (nseclen < 9) {
-        return ros::Time(secs, std::stoi(time_str.substr(pos + 1)) * std::pow(10, 9 - nseclen));
-    } else {
-        return ros::Time(secs, std::stoi(time_str.substr(pos + 1, 9)));
-    }
-}
-
-
 bool FLAG_EXIT = false;
 void SigHandle(int sig) {
   FLAG_EXIT = true;
@@ -671,8 +664,10 @@ int main(int argc, char** argv) {
     lidar_type = LidarType::LIVOX;
   } else if (lidar_type_string == "livox_ros") {
     lidar_type = LidarType::LIVOX_ROS;
+  } else if (lidar_type_string == "hesai_xiangyin") {
+    lidar_type = LidarType::HESAI_XIANGYIN;
   } else {
-    LOG(ERROR) << "erro lidar type!";
+    LOG(ERROR) << "unknown lidar type: " << lidar_type_string;
     exit(0);
   }
   ros::Subscriber cloud_sub;
@@ -726,6 +721,7 @@ int main(int argc, char** argv) {
   nh.param<bool>("enable_undistort", enable_undistort, true);
   nh.param<bool>("enable_outlier_rejection", enable_outlier_rejection, false);
   nh.param<bool>("enable_acc_correct", enable_acc_correct, false);
+  nh.param<bool>("enable_gyro_correct", enable_gyro_correct, false);
   nh.param<bool>("enable_ahrs_initalization", enable_ahrs_initalization, false);
 
   double min_radius, max_radius;
@@ -734,11 +730,11 @@ int main(int argc, char** argv) {
   nh.param<bool>("pcd_save_en", pcd_save_en, false);
   nh.param<std::string>("pcd_save_frame", pcd_save_frame, "lidar");
   nh.param<int>("pcd_save_interval", pcd_save_interval, -1.0);
-  std::string msg_start_time, msg_end_time;
-  nh.param<std::string>("msg_start_time", msg_start_time, "0");
-  nh.param<std::string>("msg_end_time", msg_end_time, "0");
-  ros::Time msg_start_time_ros = parseTimeStr(msg_start_time);
-  ros::Time msg_end_time_ros = parseTimeStr(msg_end_time);
+  double msg_start_time, msg_end_time;
+  nh.param<double>("msg_start_time", msg_start_time, 0.0);
+  nh.param<double>("msg_end_time", msg_end_time, 0.0);
+  ros::Time msg_start_time_ros(msg_start_time);
+  ros::Time msg_end_time_ros(msg_end_time);
 
   LOG(INFO) << "scan_resoultion: " << scan_resolution << std::endl
             << "voxel_map_resolution: " << voxel_map_resolution << std::endl
@@ -758,6 +754,7 @@ int main(int argc, char** argv) {
             << std::endl
             << "enable_undistort: " << enable_undistort << std::endl
             << "enable_acc_correct: " << enable_acc_correct << std::endl
+            << "enable_gyro_correct: " << enable_gyro_correct << std::endl
             << "enable_outlier_rejection: " << enable_outlier_rejection
             << std::endl
             << "enable_ahrs_initalization: " << enable_ahrs_initalization
@@ -859,6 +856,8 @@ int main(int argc, char** argv) {
       max_time_ros = msg_end_time_ros;
   int lid_cnt = 0;
   int imu_cnt = 0;
+  int lid_oor = 0;
+  int imu_oor = 0;
 
   ros::Publisher lidar_publisher;
   if (lidar_type == LidarType::LIVOX) {
@@ -873,6 +872,7 @@ int main(int argc, char** argv) {
       if (lidar_type == LidarType::LIVOX) {
         ig_lio::CustomMsg::ConstPtr lidar_msg = m.instantiate<ig_lio::CustomMsg>();
         if (lidar_msg->header.stamp < min_time_ros || lidar_msg->header.stamp > max_time_ros) {
+          ++lid_oor;
           continue;
         }
         ++lid_cnt;
@@ -880,6 +880,7 @@ int main(int argc, char** argv) {
       } else {
         sensor_msgs::PointCloud2::ConstPtr lidar_msg = m.instantiate<sensor_msgs::PointCloud2>();
         if (lidar_msg->header.stamp < min_time_ros || lidar_msg->header.stamp > max_time_ros) {
+          ++lid_oor;
           continue;
         }
         ++lid_cnt;
@@ -890,6 +891,7 @@ int main(int argc, char** argv) {
     } else if (m.getTopic() == imu_topic) {
       sensor_msgs::Imu::ConstPtr imu_msg = m.instantiate<sensor_msgs::Imu>();
       if (imu_msg->header.stamp < min_time_ros || imu_msg->header.stamp > max_time_ros) {
+        ++imu_oor;
         continue;
       }
       ++imu_cnt;
@@ -900,7 +902,10 @@ int main(int argc, char** argv) {
   bag.close();
 
   LOG(INFO) << "Finished processing bag file " << ros1_bagfile
-      << ", lidar msgs " << lid_cnt << ", imu msgs " << imu_cnt;
+            << ", lidar msgs " << lid_cnt << ", imu msgs " << imu_cnt;
+  LOG(INFO) << "Lidar msgs out of range: " << lid_oor
+            << ", IMU msgs out of range: " << imu_oor << " range ["
+            << min_time_ros << ", " << max_time_ros << "]";
 
   if (pcl_wait_save->size() > 0 && pcd_save_en && pcd_save_interval <= 0) {
     std::string all_points_dir(pcd_path.string() + "/all_scans.pcd");

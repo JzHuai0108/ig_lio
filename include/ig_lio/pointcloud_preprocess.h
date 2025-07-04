@@ -18,7 +18,12 @@
 
 #include "point_type.h"
 
-enum class LidarType { LIVOX, VELODYNE, OUSTER, LIVOX_ROS };
+enum class LidarType { LIVOX, VELODYNE, OUSTER, LIVOX_ROS, HESAI_XIANGYIN };
+// LIVOX: LIVOX CustomMsg for lidar point clouds
+// VELODYNE: Velodyne PointCloud2 message
+// OUSTER: Ouster PointCloud2 message
+// LIVOX_ROS: Livox ROS PointCloud2 message
+// HESAI_XIANGYIN: Hesai Xiangyin PointCloud2 message
 
 // for Velodyne LiDAR
 struct VelodynePointXYZIRT {
@@ -114,6 +119,9 @@ class PointCloudPreprocess {
 
   template <typename T>
   bool IsNear(const T& p1, const T& p2);
+
+  void ProcessHesaiXiangyin(const sensor_msgs::PointCloud2::ConstPtr& msg,
+                            pcl::PointCloud<PointType>::Ptr& cloud_out);
 
   void ProcessVelodyne(const sensor_msgs::PointCloud2::ConstPtr& msg,
                        pcl::PointCloud<PointType>::Ptr& cloud_out);

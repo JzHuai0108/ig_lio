@@ -44,6 +44,9 @@ void PointCloudPreprocess::Process(
   case LidarType::LIVOX_ROS:
     ProcessLivoxPC2(msg, cloud_out);
     break;
+  case LidarType::HESAI_XIANGYIN:
+    ProcessHesaiXiangyin(msg, cloud_out);
+    break;
   default:
     LOG(INFO) << "Error LiDAR Type!!!" << std::endl;
     exit(0);
@@ -82,6 +85,60 @@ void PointCloudPreprocess::ProcessLivoxPC2(
           cloud_out->push_back(point);
         }
     });
+}
+
+void PointCloudPreprocess::ProcessHesaiXiangyin(
+    const sensor_msgs::PointCloud2::ConstPtr& msg,
+    pcl::PointCloud<PointType>::Ptr& cloud_out) {
+  constexpr int kPointSize = 22;
+  int numPoints = static_cast<int>(msg->data.size()) / kPointSize;
+
+  float x, y, z;
+  double time;
+  uint8_t intensity, ring;
+
+  cloud_out->clear();
+  cloud_out->reserve(numPoints / config_.point_filter_num + 1);
+
+  double scan_begin_time = msg->header.stamp.toSec();
+  int min_intensity = 255, max_intensity = 0;
+
+  for (int i = 0; i < numPoints; ++i) {
+      const uint8_t* data_ptr = &msg->data[i * kPointSize];
+
+      std::memcpy(&x,      data_ptr,         4);
+      std::memcpy(&y,      data_ptr + 4,     4);
+      std::memcpy(&z,      data_ptr + 8,     4);
+      std::memcpy(&time,   data_ptr + 12,    8);
+      std::memcpy(&intensity, data_ptr + 20, 1);
+      std::memcpy(&ring,      data_ptr + 21, 1);
+
+      min_intensity = std::min<int>(min_intensity, intensity);
+      max_intensity = std::max<int>(max_intensity, intensity);
+
+      if (i == 0) {
+          scan_begin_time = time;
+      }
+
+      if ((i % config_.point_filter_num) == 0) {
+          PointType point;
+          point.x = x;
+          point.y = y;
+          point.z = z;
+          point.intensity = intensity;
+          point.normal_x = 0;
+          point.normal_y = 0;
+          point.normal_z = 0;
+          // curvature unit: ms
+          point.curvature = static_cast<float>((time - scan_begin_time) * config_.time_scale);
+          cloud_out->push_back(point);
+      }
+  }
+
+  VLOG(3) << "[ProcessHesaiXiangyin] Frame \"" << msg->header.frame_id << "\" has " 
+            << numPoints << " points, intensity range: [" 
+            << min_intensity << ", " << max_intensity << "]"
+            << std::endl;
 }
 
 void PointCloudPreprocess::ProcessVelodyne(
