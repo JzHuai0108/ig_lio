@@ -7,6 +7,7 @@ point_filter_num: 4
 time_scale: 1000.0 # nclt: 0.001 other: 1000.0
 enable_ahrs_initalization: true
 enable_acc_correct: false
+tbb_threads: 1 # 0 auto, 1 single thread
 
 scan_resolution: 0.5
 voxel_map_resolution: 0.5

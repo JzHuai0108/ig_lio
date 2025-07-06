@@ -3,6 +3,9 @@
 #include <fstream>
 #include <mutex>
 
+#include <tbb/global_control.h>
+#include <thread>
+
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
@@ -636,7 +639,16 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "ig_lio_node");
   ros::NodeHandle nh;
 
- if (argc < 4) {
+  int nt = 0;
+  nh.param("tbb_threads", nt, 0);
+
+  // throttle TBB before any parallel_for/reduce runs
+  int used_nt = nt > 0 ? nt : std::thread::hardware_concurrency();
+  tbb::global_control control(
+    tbb::global_control::max_allowed_parallelism,
+    used_nt);
+
+  if (argc < 4) {
     std::cerr << "Usage: rosrun ig_lio ig_lio_node <config_file.yaml> <ros1.bag> <output_dir>" << std::endl;
     return EXIT_FAILURE;
   }
@@ -684,7 +696,8 @@ int main(int argc, char** argv) {
   nh.param<double>("time_scale", time_scale, 1.0);
   nh.param<int>("point_filter_num", point_filter_num, 1);
   LOG(INFO) << "Velodyne time_scale: " << time_scale << std::endl
-            << "point_filter_num: " << point_filter_num;
+            << "point_filter_num: " << point_filter_num << ", "
+            << "tbb threads: " << used_nt;
   PointCloudPreprocess::Config cloud_preprocess_config;
   cloud_preprocess_config.lidar_type = lidar_type;
   cloud_preprocess_config.point_filter_num = point_filter_num;
