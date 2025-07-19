@@ -42,10 +42,9 @@ generate_messages(DEPENDENCIES
 )
 
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES gicp_lio
+  INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}       # exports the ig_lio library
   CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
-#  DEPENDS system_lib
 )
 
 include_directories(
@@ -56,8 +55,7 @@ include_directories(SYSTEM
   ${catkin_INCLUDE_DIRS}	
 )
 
-add_executable(${PROJECT_NAME}_node 
-  src/ig_lio_node
+add_library(${PROJECT_NAME}
   src/pointcloud_preprocess.cpp
   src/lio.cpp
   src/voxel_map.cpp
@@ -66,21 +64,64 @@ add_executable(${PROJECT_NAME}_node
   src/faster_voxel_grid.cpp
 )
 
+# Let CMake know you depend on catkin‐generated targets (messages, etc.)
+add_dependencies(${PROJECT_NAME}
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+# Public headers and compile‐time interface
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CATKIN_PACKAGE_INCLUDE_DESTINATION}>  # <install>/include
+    ${catkin_INCLUDE_DIRS}
+)
+
+# Enforce modern C++
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+
+# Link libraries (PUBLIC = consumers also need them)
+target_link_libraries(${PROJECT_NAME}
+  PUBLIC
+    ${catkin_LIBRARIES}
+    glog
+    gflags
+    TBB::tbb
+)
+
+## -----------------------
+##  Executable target
+## -----------------------
+add_executable(${PROJECT_NAME}_node
+  src/ig_lio_node.cpp
+)
+
+# Node only needs to see your library
 target_link_libraries(${PROJECT_NAME}_node
-  ${catkin_LIBRARIES}
-  glog
-  gflags
-  TBB::tbb
+  PRIVATE
+    ${PROJECT_NAME}
 )
 
-install(TARGETS ${PROJECT_NAME}_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+## -----------------------
+##  Installation
+## -----------------------
+install(
+  TARGETS
+    ${PROJECT_NAME}
+    ${PROJECT_NAME}_node
+  ARCHIVE  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+# Install headers
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
-  PATTERN ".git" EXCLUDE
+  FILES_MATCHING
+    PATTERN "*.h"
+    PATTERN "*.hpp"
+    PATTERN ".git" EXCLUDE
 )
 
 install(DIRECTORY launch/
