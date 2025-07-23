@@ -212,13 +212,23 @@ void VoxelMap::ComputeCovariance(std::shared_ptr<Grid>& grid_ptr) {
          grid_ptr->points_sum_ * grid_ptr->centroid_.transpose()) /
         (static_cast<double>(grid_ptr->points_num_) - 1.0);
 
+    if (!covariance.allFinite()) {
+      LOG(ERROR)
+        << "Invalid covariance:\n" << covariance << "\n"
+        << "cov_sum:\n"       << grid_ptr->cov_sum_ << "\n"
+        << "points_sum: "      << grid_ptr->points_sum_.transpose() << "\n"
+        << "centroid: "        << grid_ptr->centroid_.transpose()
+        << ", points_num " << grid_ptr->points_num_;
+
+      grid_ptr->is_valid_ = false;
+      return;
+    }
+
     Eigen::JacobiSVD<Eigen::Matrix3d> svd(
         covariance, Eigen::ComputeFullU | Eigen::ComputeFullV);
-
-    Eigen::Vector3d values(1, 1, 1e-3);
-    Eigen::Matrix3d modified_cov =
+    Eigen::Vector3d values(1, 1, 1e-3); // singular values are sorted in decreasing order.
+    Eigen::Matrix3d modified_cov = 
         svd.matrixU() * values.asDiagonal() * svd.matrixV().transpose();
-
     grid_ptr->inv_cov_ = modified_cov.inverse();
     grid_ptr->cov_ = modified_cov;
     grid_ptr->is_valid_ = true;
