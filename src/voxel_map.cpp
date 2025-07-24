@@ -1,5 +1,7 @@
 #include "ig_lio/voxel_map.h"
 
+#include <Eigen/Eigenvalues>
+
 VoxelMap::VoxelMap(Config config) {
   resolution_ = config.resolution;
   inv_resolution_ = 1.0 / resolution_;
@@ -205,6 +207,54 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
   return true;
 }
 
+Eigen::Matrix3d svdClamp(const Eigen::Matrix3d& cov) {
+    Eigen::JacobiSVD<Eigen::Matrix3d> svd(cov, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::Vector3d sv_clamp(1.0, 1.0, 1e-3);
+    Eigen::Matrix3d cov_svd = 
+        svd.matrixU() * sv_clamp.asDiagonal() * svd.matrixV().transpose();
+    return cov_svd;
+}
+
+Eigen::Matrix3d eigenClamp(const Eigen::Matrix3d& cov) {
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es;
+    es.compute(cov.selfadjointView<Eigen::Lower>());
+    Eigen::Matrix3d V = es.eigenvectors();
+    Eigen::Vector3d clamp_vals = Eigen::Vector3d(1e-3, 1.0, 1.0);
+    Eigen::Matrix3d cov_eig = 
+        V * clamp_vals.asDiagonal() * V.transpose();
+    return cov_eig;
+}
+
+Eigen::Matrix3d eigenClamp2(const Eigen::Matrix3d& cov) {
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es;
+    es.compute(cov.selfadjointView<Eigen::Lower>());
+
+    Eigen::Vector3d evals = es.eigenvalues();
+    Eigen::Vector3d sorted_evals;
+    Eigen::Matrix3d V = es.eigenvectors();
+    Eigen::Matrix3d Vp;  // permuted columns
+
+    // Create an index array [0,1,2] and sort it by |evals[i]|
+    std::array<int, 3> idx = {0, 1, 2};
+    std::sort(idx.begin(), idx.end(),
+              [&](int a, int b) {
+                  return std::abs(evals[a]) < std::abs(evals[b]);
+              });
+
+    // Build sorted vectors and permuted eigenvector matrix
+    for (int i = 0; i < 3; ++i) {
+        sorted_evals[i] = evals[idx[i]];
+        Vp.col(i) = V.col(idx[i]);
+    }
+
+    // Reconstruct the clamped covariance
+    Eigen::Vector3d clamp_vals = Eigen::Vector3d(1e-3, 1.0, 1.0);
+    Eigen::Matrix3d cov_eig = 
+        Vp * clamp_vals.asDiagonal() * Vp.transpose();
+
+    return cov_eig;
+}
+
 void VoxelMap::ComputeCovariance(std::shared_ptr<Grid>& grid_ptr) {
   if (grid_ptr->points_num_ >= 6) {
     Eigen::Matrix3d covariance =
@@ -224,11 +274,7 @@ void VoxelMap::ComputeCovariance(std::shared_ptr<Grid>& grid_ptr) {
       return;
     }
 
-    Eigen::JacobiSVD<Eigen::Matrix3d> svd(
-        covariance, Eigen::ComputeFullU | Eigen::ComputeFullV);
-    Eigen::Vector3d values(1, 1, 1e-3); // singular values are sorted in decreasing order.
-    Eigen::Matrix3d modified_cov = 
-        svd.matrixU() * values.asDiagonal() * svd.matrixV().transpose();
+    Eigen::Matrix3d modified_cov = eigenClamp(covariance);
     grid_ptr->inv_cov_ = modified_cov.inverse();
     grid_ptr->cov_ = modified_cov;
     grid_ptr->is_valid_ = true;

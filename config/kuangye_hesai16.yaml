@@ -3,7 +3,7 @@ imu_topic: /imu/data
 lidar_type: velodyne # since they saved the hesai16 data as velodyne format, we can use the velodyne type
 min_radius: 1.0
 max_radius: 100.0
-point_filter_num: 4
+point_filter_num: 1
 time_scale: 1000.0
 enable_ahrs_initalization: true
 enable_acc_correct: true
