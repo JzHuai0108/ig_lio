@@ -12,3 +12,5 @@ void Timer::PrintAll() {
               << " ms , called times: " << r.second.time_usage_in_ms_.size();
   }
 }
+
+Timer timer;

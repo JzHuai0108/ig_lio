@@ -65,7 +65,7 @@ ros::Publisher keyframe_scan_pub;
 ros::Publisher path_pub;
 nav_msgs::Path path_array;
 
-Timer timer;
+extern Timer timer;
 std::shared_ptr<PointCloudPreprocess> cloud_preprocess_ptr;
 SensorMeasurement sensor_measurement;
 std::shared_ptr<LIO> lio_ptr;
