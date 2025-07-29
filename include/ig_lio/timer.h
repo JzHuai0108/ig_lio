@@ -45,4 +45,6 @@ class Timer {
   std::map<std::string, TimerRecord> records_;
 };
 
+extern Timer timer;
+
 #endif

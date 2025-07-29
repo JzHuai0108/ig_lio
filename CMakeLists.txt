@@ -8,10 +8,28 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 ${CMAKE_CXX_FLAGS} -Wall")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
+# ──────────────────────────────────────────────────────────────────
+# 1) Force the DLL CRT (/MD) so iostream uses __declspec(dllimport)
+# These lines are necessary to fix the error:
+# error LNK2001: unresolved external symbol "__declspec(dllimport) public: class std::basic_ostream<char,struct std::char_traits<char> > *
+# ──────────────────────────────────────────────────────────────────
+if(MSVC)
+  # Apply to all targets:
+  add_compile_options("/MD" "$<$<CONFIG:Debug>:/MDd>")
+endif()
+
+# At the top of your CMakeLists.txt, after setting/reading USE_SYSTEM_EIGEN:
+# (this variable is “AUTO”, “ON” or “OFF”)
+# We treat AUTO the same as OFF here, since AUTO→OFF means "use bundled".
+if(USE_SYSTEM_EIGEN STREQUAL "ON")
+  set(_EIGEN_DEPENDS "")
+else()
+  set(_EIGEN_DEPENDS eigen_catkin)
+endif()
+
+# Then one find_package invocation:
 find_package(catkin REQUIRED COMPONENTS
+  ${_EIGEN_DEPENDS}
   roscpp
   rospy
   std_msgs
@@ -55,7 +73,7 @@ include_directories(SYSTEM
   ${catkin_INCLUDE_DIRS}	
 )
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} STATIC
   src/pointcloud_preprocess.cpp
   src/lio.cpp
   src/voxel_map.cpp
@@ -63,6 +81,13 @@ add_library(${PROJECT_NAME}
   src/timer.cpp
   src/faster_voxel_grid.cpp
 )
+
+# These lines does not seem to be necessary in exporting the Timer timer global object for the static library.
+# if (WIN32)
+#   set_target_properties(${PROJECT_NAME} PROPERTIES
+#     WINDOWS_EXPORT_ALL_SYMBOLS ON
+#   )
+# endif()
 
 # Let CMake know you depend on catkin‐generated targets (messages, etc.)
 add_dependencies(${PROJECT_NAME}
@@ -85,10 +110,23 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     ${catkin_LIBRARIES}
-    glog
-    gflags
+    ${GLOG_LIBRARY}
+    ${GFLAGS_LIBRARY}
     TBB::tbb
 )
+
+# ──────────────────────────────────────────────────────────────────
+# 2) Explicitly link MSVC C++ runtime import-libs
+# These lines does not seem to be necessary any more, but was used to fix the error:
+# error LNK2001: unresolved external symbol "__declspec(dllimport) public: class std::basic_ostream<char,struct std::char_traits<char> > *
+# ──────────────────────────────────────────────────────────────────
+# if(MSVC)
+#   target_link_libraries(${PROJECT_NAME}
+#     PRIVATE
+#       msvcprt    # STL / iostream symbols
+#       msvcrt     # C runtime
+#   )
+# endif()
 
 ## -----------------------
 ##  Executable target

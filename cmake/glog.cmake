@@ -11,17 +11,26 @@ else()
 endif()
 
 if(MSVC)
-    find_library(GLOG_LIBRARY_RELEASE libglog_static
-        PATHS ${GLOG_ROOT_DIR}
-        PATH_SUFFIXES Release)
+    # find_library(GLOG_LIBRARY_RELEASE libglog_static
+    #     PATHS ${GLOG_ROOT_DIR}
+    #     PATH_SUFFIXES Release)
 
-    find_library(GLOG_LIBRARY_DEBUG libglog_static
-        PATHS ${GLOG_ROOT_DIR}
-        PATH_SUFFIXES Debug)
+    # find_library(GLOG_LIBRARY_DEBUG libglog_static
+    #     PATHS ${GLOG_ROOT_DIR}
+    #     PATH_SUFFIXES Debug)
 
-    set(GLOG_LIBRARY optimized ${GLOG_LIBRARY_RELEASE} debug ${GLOG_LIBRARY_DEBUG})
+    # set(GLOG_LIBRARY optimized ${GLOG_LIBRARY_RELEASE} debug ${GLOG_LIBRARY_DEBUG})
+    find_library(GLOG_LIBRARY glog
+        PATHS ${GLOG_ROOT_DIR}
+        PATH_SUFFIXES "" lib lib64)
+    find_library(GFLAGS_LIBRARY gflags
+        PATHS ${GLOG_ROOT_DIR}
+        PATH_SUFFIXES "" lib lib64)
 else()
     find_library(GLOG_LIBRARY glog
+        PATHS ${GLOG_ROOT_DIR}
+        PATH_SUFFIXES lib lib64)
+    find_library(GFLAGS_LIBRARY gflags
         PATHS ${GLOG_ROOT_DIR}
         PATH_SUFFIXES lib lib64)
 endif()

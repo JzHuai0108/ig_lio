@@ -66,12 +66,12 @@ void PointCloudPreprocess::ProcessLivoxPC2(
     cloud_out->reserve(plsize);
 
     std::vector<bool> is_valid_pt(plsize, false);
-    std::vector<uint> index(plsize - 1);
+    std::vector<uint32_t> index(plsize - 1);
     for (int i = 0; i < plsize - 1; ++i) {
         index[i] = i + 1;  // 从1开始
     }
 
-    std::for_each(index.begin(), index.end(), [&](const uint &i) {
+    std::for_each(index.begin(), index.end(), [&](const uint32_t &i) {
         if ((cloud_origin.at(i).line < num_scans_) &&
             (i % config_.point_filter_num == 0) && !HasInf(cloud_origin.at(i)) &&
             !HasNan(cloud_origin.at(i))) {
@@ -163,7 +163,7 @@ void PointCloudPreprocess::ProcessVelodyne(
         atan2(cloud_origin.points[0].y, cloud_origin.points[0].x) * 57.29578;
     double yaw_end = yaw_first;
     int layer_first = cloud_origin.points[0].ring;
-    for (uint i = plsize - 1; i > 0; i--) {
+    for (uint32_t i = plsize - 1; i > 0; i--) {
       if (cloud_origin.points[i].ring == layer_first) {
         yaw_end = atan2(cloud_origin.points[i].y, cloud_origin.points[i].x) *
                   57.29578;

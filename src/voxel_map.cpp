@@ -1,5 +1,7 @@
 #include "ig_lio/voxel_map.h"
 
+#include <array>
+
 #include <Eigen/Eigenvalues>
 
 VoxelMap::VoxelMap(Config config) {
