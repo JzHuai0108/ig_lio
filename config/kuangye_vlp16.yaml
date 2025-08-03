@@ -37,5 +37,6 @@ R_imu_lidar: [ 0, 0, 1,
               -1, 0, 0]
 
 pcd_save_en: true
+pcd_save_lin_undistorted: false # save linearly undistorted point cloud in lidar frame
 pcd_save_interval: 1                 # how many LiDAR frames saved in each pcd file, -1: all;
 pcd_save_frame: "lidar"               # "world", "imu", "lidar"

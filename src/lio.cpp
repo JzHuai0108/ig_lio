@@ -14,6 +14,7 @@ bool LIO::MeasurementUpdate(SensorMeasurement& sensor_measurement) {
       }
     }
     sensor_measurement.cloud_ptr_ = filtered_cloud_ptr;
+    sensor_measurement.lidar_cloud_ptr_ = pcl::make_shared<CloudType>(*sensor_measurement.cloud_ptr_);
 
     timer.Evaluate(
         [&, this]() {
@@ -802,6 +803,69 @@ bool LIO::UndistortPointCloud(const double bag_time,
   return true;
 }
 
+bool LIO::LinUndistortPointCloud(const double lidar_start_time,
+                               const double lidar_end_time,
+                               CloudPtr& cloud_ptr) {
+  // Check time consistency of the penultimate and last lidar states
+  double t_prev = lidar_states_[lidar_states_.size() - 2].time;
+  double t_curr = lidar_states_.back().time;
+
+  if (std::abs(t_prev - lidar_start_time) > 10e-3) {
+    std::cerr << "[Warning] Penultimate lidar state time mismatch:\n"
+              << "  Expected: " << std::fixed << std::setprecision(9) << lidar_start_time << "  Actual: " << t_prev
+              << "  Diff: " << std::abs(t_prev - lidar_start_time) << " sec\n";
+  }
+
+  if (std::abs(t_curr - lidar_end_time) > 1e-4) {
+    std::cerr << "[Warning] Last lidar state time mismatch:\n"
+              << "  Expected: " << std::fixed << std::setprecision(9) << lidar_end_time << "  Actual: " << t_curr
+              << "  Diff: " << std::abs(t_curr - lidar_end_time) << " sec\n";
+  }
+
+  // Get the last two lidar poses
+  const auto& state_prev = lidar_states_[lidar_states_.size() - 2];
+  const auto& state_curr = lidar_states_.back();
+
+  // Compute angular and linear velocities between the last two poses
+  Eigen::Matrix3d R_prev = state_prev.T.block<3, 3>(0, 0);
+  Eigen::Matrix3d R_curr = state_curr.T.block<3, 3>(0, 0);
+  Eigen::Matrix3d R_delta = R_prev.transpose() * R_curr;
+
+  Eigen::AngleAxisd angle_axis(R_delta);
+  double delta_t = t_curr - t_prev;
+  Eigen::Vector3d angular_velocity = angle_axis.axis() * angle_axis.angle() / delta_t;
+  Eigen::Vector3d linear_velocity = state_prev.vel;
+
+  // Apply motion compensation to each point in the cloud
+  for (auto& pt : cloud_ptr->points) {
+    // Convert point timestamp relative to motion start
+    double point_time = lidar_start_time + pt.curvature / 1000.0 - t_prev;
+
+    // Pose of lidar at point time
+    Eigen::Vector3d delta_angle = angular_velocity * point_time;
+    Eigen::Matrix3d R_w_li = R_prev;
+    if (delta_angle.norm() > 1e-10) {
+        R_w_li *= Eigen::AngleAxisd(delta_angle.norm(), delta_angle.normalized()).toRotationMatrix();
+    }
+    Eigen::Vector3d t_w_li = state_prev.T.block<3, 1>(0, 3) + linear_velocity * point_time;
+
+    // Pose of lidar at scan end time
+    Eigen::Matrix3d R_w_le = R_curr;
+    Eigen::Vector3d t_w_le = state_curr.T.block<3, 1>(0, 3);
+
+    // Transform point from time-interpolated pose to scan-end pose
+    Eigen::Vector3d p_li(pt.x, pt.y, pt.z);
+    Eigen::Vector3d p_le = R_w_le.transpose() * (R_w_li * p_li + t_w_li - t_w_le);
+
+    // Overwrite point with undistorted coordinates
+    pt.x = p_le.x();
+    pt.y = p_le.y();
+    pt.z = p_le.z();
+  }
+
+  return true;
+}
+
 bool LIO::StaticInitialization(SensorMeasurement& sensor_measurement) {
   if (first_imu_frame_) {
     const auto& acc = sensor_measurement.imu_buff_.front().linear_acceleration;
@@ -925,7 +989,7 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
        back_imu.orientation.x * back_imu.orientation.x +
        back_imu.orientation.y * back_imu.orientation.y +
        back_imu.orientation.z * back_imu.orientation.z) < 1.0) {
-    LOG(ERROR) << "AHRS initalization falid, please use static initalizaiton!";
+    LOG(ERROR) << "AHRS initialization falid, please use static initalizaiton!";
     return false;
   }
 
@@ -1025,6 +1089,17 @@ bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
   lio_init_ = true;
 
   return true;
+}
+
+void LIO::RecordState(double lid_end_time) {
+  LidarState lidar_state;
+  lidar_state.time = lid_end_time;
+  lidar_state.T = curr_state_.pose * config_.T_imu_lidar;
+  lidar_state.vel = curr_state_.vel; // we ignore the Coriolis effect on lidar velocity
+  lidar_states_.push_back(lidar_state);
+  if (lidar_states_.size() > 2) {
+    lidar_states_.pop_front();
+  }
 }
 
 bool LIO::CorrectState(const State& state,

@@ -34,13 +34,16 @@ enum GNSSStatus { RTK_FIXED, RTK_FLOAT, NONE };
 
 struct SensorMeasurement {
   MeasurementType measurement_type_;
-  // ros time
+  // ros header.stamp of the message
   double bag_time_{0.0};
   // The time of the first laser point in the scan
   double lidar_start_time_{0.0};
   // The time of the last laser point in the scan
   double lidar_end_time_{0.0};
   CloudPtr cloud_ptr_{}; // lidar point in the imu frame.
+
+  CloudPtr lidar_cloud_ptr_{}; // lidar point in the lidar frame.
+
   std::deque<sensor_msgs::Imu> imu_buff_;
 
   Eigen::Matrix4d gnss_pose_ = Eigen::Matrix4d::Identity();
@@ -114,6 +117,12 @@ class LIO {
 
   bool IsInit() { return lio_init_; }
 
+  void RecordState(double lid_end_time);
+
+  bool LinUndistortPointCloud(const double lidar_start_time,
+                              const double lidar_end_time,
+                              CloudPtr& cloud_ptr);
+
   Eigen::Matrix4d GetCurrentPose() { return curr_state_.pose; }
 
   Eigen::Vector3d GetCurrentVel() { return curr_state_.vel; }
@@ -151,6 +160,17 @@ class LIO {
   };
   std::deque<PoseHistory> pose_history_;  // for pointcloud
 
+  struct LidarState {
+  public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    double time = 0.0; // the time of the lidar scan
+    Eigen::Matrix4d T = Eigen::Matrix4d::Identity(); // pose of the lidar relative to the world frame aligned to the gravity
+    Eigen::Vector3d vel = Eigen::Vector3d::Zero(); // velocity of the lidar
+    Eigen::Vector3d un_acc = Eigen::Vector3d::Zero(); // lidar linear acceleration in the world frame
+    Eigen::Vector3d un_gyr = Eigen::Vector3d::Zero(); // lidar angular velocity in the world frame
+  };
+  std::deque<LidarState> lidar_states_; // for pointcloud undistortion
+
   struct Correspondence {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
@@ -166,7 +186,7 @@ class LIO {
   struct State {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d pose = Eigen::Matrix4d::Identity(); // pose of the IMU relative to the world frame aligned to the gravity
     Eigen::Vector3d vel = Eigen::Vector3d::Zero();
     Eigen::Vector3d ba = Eigen::Vector3d::Zero();
     Eigen::Vector3d bg = Eigen::Vector3d::Zero();
@@ -231,8 +251,8 @@ class LIO {
   // the applied force to counteract the gravity
   Eigen::Vector3d g_ = Eigen::Vector3d(0.0, 0.0, 9.81);
 
-  State curr_state_;
-  State prev_state_;
+  State curr_state_; // the latest state estimate
+  State prev_state_; // the state estimate prior to IMU propagation, or measurement update
 
   Eigen::Vector3d acc_0_ = Eigen::Vector3d::Zero();
   Eigen::Vector3d gyr_0_ = Eigen::Vector3d::Zero();

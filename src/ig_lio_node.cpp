@@ -40,7 +40,9 @@ Eigen::Matrix4d T_imu_lidar;
 
 // parameters used to save pcds
 fs::path pcd_path;
+fs::path lin_pcd_path;
 bool pcd_save_en = false;
+bool pcd_save_lin_undistorted = false;
 std::string pcd_save_frame = "lidar";
 int pcd_save_interval = -1;
 static int scan_wait_num = 0;
@@ -400,6 +402,7 @@ void Process() {
     } else {
       lio_ptr->StaticInitialization(sensor_measurement);
     }
+    lio_ptr->RecordState(sensor_measurement.lidar_end_time_);
     return;
   }
 
@@ -425,6 +428,7 @@ void Process() {
   // Too little points for measurement update!
   if (sensor_measurement.cloud_ptr_->size() <= 1) {
     LOG(WARNING) << "no point, skip this scan";
+    lio_ptr->RecordState(sensor_measurement.lidar_end_time_);
     return;
   }
 
@@ -442,6 +446,7 @@ void Process() {
           << " bg(deg/s): " << lio_ptr->GetCurrentBg().transpose() * 180.0 / M_PI
           << " bg_norm: " << lio_ptr->GetCurrentBg().norm() * 180.0 / M_PI
           << std::endl;
+  lio_ptr->RecordState(sensor_measurement.lidar_end_time_);
 
   // Setp 5: Send to rviz for visualization
   Eigen::Matrix4d result_pose = lio_ptr->GetCurrentPose();
@@ -480,11 +485,11 @@ void Process() {
     *pcl_wait_save += *trans_cloud_world;
     scan_wait_num++;
 
+    uint32_t sec = static_cast<uint32_t>(sensor_measurement.lidar_end_time_);
+    uint32_t nsec = static_cast<uint32_t>((sensor_measurement.lidar_end_time_ - sec) * 1e9);
+
     if (!pcl_wait_save->empty() && pcd_save_interval > 0 && scan_wait_num >= pcd_save_interval) {
       // Format timestamp as "%d.%09d"
-      uint32_t sec = static_cast<uint32_t>(sensor_measurement.lidar_end_time_);
-      uint32_t nsec = static_cast<uint32_t>((sensor_measurement.lidar_end_time_ - sec) * 1e9);
-
       char filename[512];
       std::snprintf(filename, sizeof(filename), "%s/%d.%09d.pcd", pcd_path.string().c_str(), sec, nsec);
       std::string all_points_dir(filename);
@@ -512,6 +517,18 @@ void Process() {
       }
       pcl_wait_save->clear();
       scan_wait_num = 0;
+    }
+
+    if (pcd_save_lin_undistorted) {
+      char filename[512];
+      std::snprintf(filename, sizeof(filename), "%s/%d.%09d.pcd", lin_pcd_path.string().c_str(), sec, nsec);
+      std::string pcd_fn(filename);
+      pcl::PCDWriter pcd_writer;
+      VLOG(2) << "Saving current linearly undistorted scan in lidar frame to " << pcd_fn;
+      lio_ptr->LinUndistortPointCloud(sensor_measurement.bag_time_,
+                                       sensor_measurement.lidar_end_time_,
+                                       sensor_measurement.lidar_cloud_ptr_);
+      pcd_writer.writeBinary(pcd_fn, *sensor_measurement.lidar_cloud_ptr_);
     }
   }
 
@@ -741,6 +758,7 @@ int main(int argc, char** argv) {
   nh.param<double>("min_radius", min_radius, 1.0);
   nh.param<double>("max_radius", max_radius, 1.0);
   nh.param<bool>("pcd_save_en", pcd_save_en, false);
+  nh.param<bool>("pcd_save_lin_undistorted", pcd_save_lin_undistorted, false);
   nh.param<std::string>("pcd_save_frame", pcd_save_frame, "lidar");
   nh.param<int>("pcd_save_interval", pcd_save_interval, -1.0);
   double msg_start_time, msg_end_time;
@@ -833,6 +851,10 @@ int main(int argc, char** argv) {
   pcd_path = fs::path(output_dir) / "pcd";
   if (!fs::exists(pcd_path)) {
     fs::create_directories(pcd_path);	
+  }
+  lin_pcd_path = fs::path(output_dir) / "lin_pcd";
+  if (pcd_save_lin_undistorted && !fs::exists(lin_pcd_path)) {
+    fs::create_directories(lin_pcd_path);	
   }
 
   fs::path result_path = fs::path(output_dir) / "scan_states.txt";
