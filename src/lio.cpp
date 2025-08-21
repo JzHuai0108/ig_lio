@@ -985,11 +985,13 @@ bool LIO::StaticInitialization(SensorMeasurement& sensor_measurement) {
 
 bool LIO::AHRSInitialization(SensorMeasurement& sensor_measurement) {
   const auto& back_imu = sensor_measurement.imu_buff_.back();
-  if ((back_imu.orientation.w * back_imu.orientation.w +
+  double mag = (back_imu.orientation.w * back_imu.orientation.w +
        back_imu.orientation.x * back_imu.orientation.x +
        back_imu.orientation.y * back_imu.orientation.y +
-       back_imu.orientation.z * back_imu.orientation.z) < 1.0) {
-    LOG(ERROR) << "AHRS initialization falid, please use static initalizaiton!";
+       back_imu.orientation.z * back_imu.orientation.z);
+  if (std::fabs(mag - 1.0) > 1e-2) {
+    LOG(ERROR) << "AHRS initialization falid with an unusual magnitude "
+       << std::fixed << std::setprecision(6) << mag << ", please use static initalizaiton!";
     return false;
   }
 

@@ -45,7 +45,7 @@ void PointCloudPreprocess::Process(
     ProcessLivoxPC2(msg, cloud_out);
     break;
   case LidarType::HESAI_XIANGYIN:
-    ProcessHesaiXiangyin(msg, cloud_out);
+    ProcessHesaiXiangyin2(msg, cloud_out);
     break;
   default:
     LOG(INFO) << "Error LiDAR Type!!!" << std::endl;
@@ -139,6 +139,57 @@ void PointCloudPreprocess::ProcessHesaiXiangyin(
             << numPoints << " points, intensity range: [" 
             << min_intensity << ", " << max_intensity << "]"
             << std::endl;
+}
+
+void PointCloudPreprocess::ProcessHesaiXiangyin2(
+    const sensor_msgs::PointCloud2::ConstPtr& msg,
+    pcl::PointCloud<PointType>::Ptr& cloud_out) {
+  // Decode ROS msg -> Hesai raw cloud
+  pcl::PointCloud<HesaiPoint> cloud_origin;
+  pcl::fromROSMsg(*msg, cloud_origin);
+
+  cloud_out->clear();
+
+  // Guard against bad config; stride must be >= 1
+  const int stride = std::max(1, config_.point_filter_num);
+  const std::size_t N = cloud_origin.size();
+  // Reserve close to expected size
+  cloud_out->reserve((N + stride - 1) / stride);
+
+  auto isFinite = [](const HesaiPoint& p) {
+    return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z);
+  };
+
+  int min_intensity = 255;
+  int max_intensity = 0;
+
+  // Subsample + filter
+  for (std::size_t i = 0; i < N; ++i) {
+    if (i % static_cast<std::size_t>(stride) != 0) continue;
+
+    const HesaiPoint& p = cloud_origin[i];
+    if (!isFinite(p)) continue;
+
+    // Track intensity range for valid points only
+    const int inten = static_cast<int>(p.intensity);
+    min_intensity = std::min(min_intensity, inten);
+    max_intensity = std::max(max_intensity, inten);
+
+    PointType q;
+    q.x = p.x; q.y = p.y; q.z = p.z;
+    q.intensity = p.intensity;
+
+    // Store timestamp in milliseconds in "curvature" field (as original code)
+    q.curvature = p.time * config_.time_scale;
+    q.normal_x = 0.0f; q.normal_y = 0.0f; q.normal_z = 0.0f;
+
+    cloud_out->push_back(q);
+  }
+
+  VLOG(3) << "[ProcessHesaiXiangyin2] Frame \"" << msg->header.frame_id
+          << "\" has " << N << " points; kept " << cloud_out->size()
+          << " (stride=" << stride << "), intensity range: ["
+          << min_intensity << ", " << max_intensity << "]";
 }
 
 void PointCloudPreprocess::ProcessVelodyne(

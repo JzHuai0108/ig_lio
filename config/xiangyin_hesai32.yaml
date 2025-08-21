@@ -1,13 +1,13 @@
-lidar_topic: /points
-imu_topic: /imu
+lidar_topic: /epic_points
+imu_topic: /imu/data
 lidar_type: hesai_xiangyin # livox velodyne ouster
 min_radius: 1.0
-max_radius: 100.0
+max_radius: 200.0
 point_filter_num: 4
 time_scale: 1000.0
 enable_ahrs_initalization: false
 enable_acc_correct: false
-enable_gyro_correct: true
+enable_gyro_correct: false
 
 scan_resolution: 0.5
 voxel_map_resolution: 0.5
@@ -26,7 +26,7 @@ enable_outlier_rejection: true
 gravity: 9.80665
 init_ori_cov: 0.0001
 init_pos_cov: 0.0001
-init_vel_cov: 10.0
+init_vel_cov: 1.0
 init_ba_cov: 0.0001
 init_bg_cov: 0.0001
 

@@ -38,6 +38,23 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(
         std::uint16_t, ring, ring)(float, time, time))
 
+struct HesaiPoint
+{
+  PCL_ADD_POINT4D;
+  float intensity;
+  float time; // offset time respect to first point , second
+  std::uint16_t ring;
+};
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(HesaiPoint,
+    (float, x, x)
+    (float, y, y)
+    (float, z, z)
+    (float, intensity, intensity)
+    (float, time, time)
+    (std::uint16_t, ring, ring)
+)
+
 // for Ouster LiDAR
 struct OusterPointXYZIRT {
   PCL_ADD_POINT4D;
@@ -122,6 +139,9 @@ class PointCloudPreprocess {
 
   void ProcessHesaiXiangyin(const sensor_msgs::PointCloud2::ConstPtr& msg,
                             pcl::PointCloud<PointType>::Ptr& cloud_out);
+
+  void ProcessHesaiXiangyin2(const sensor_msgs::PointCloud2::ConstPtr& msg,
+                             pcl::PointCloud<PointType>::Ptr& cloud_out);
 
   void ProcessVelodyne(const sensor_msgs::PointCloud2::ConstPtr& msg,
                        pcl::PointCloud<PointType>::Ptr& cloud_out);

@@ -33,7 +33,7 @@ init_ba_cov: 0.0001
 init_bg_cov: 0.0001
 
 # kuangye rotating hesai16
-t_imu_lidar: [ 0.0, 0.0, 0.0 ]
+t_imu_lidar: [ 0.00023, 0.018, 0.06304 ]
 R_imu_lidar: [ 1, 0, 0,
                0, 1, 0,
                0, 0, 1]
