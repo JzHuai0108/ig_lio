@@ -6,6 +6,9 @@ max_radius: 70.0
 point_filter_num: 1
 enable_ahrs_initalization: false
 enable_acc_correct: false
+msg_start_time: 1.0
+msg_end_time: 2000000000.0
+tbb_threads: 1 # 0 auto, 1 single thread
 
 scan_resolution: 0.5
 voxel_map_resolution: 0.5

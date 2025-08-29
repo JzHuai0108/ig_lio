@@ -8,6 +8,7 @@ time_scale: 1000.0
 enable_ahrs_initalization: false
 enable_acc_correct: false
 enable_gyro_correct: false
+tbb_threads: 1 # 0 auto, 1 single thread
 
 scan_resolution: 0.5
 voxel_map_resolution: 0.5
