@@ -7,7 +7,7 @@
 #ifndef POINTCLOUD_PREPROCESS_H_
 #define POINTCLOUD_PREPROCESS_H_
 
-#include <ros/ros.h>
+// #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
 #include <glog/logging.h>
