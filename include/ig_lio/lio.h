@@ -9,7 +9,15 @@
 
 #include <deque>
 #include <numeric>
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <iomanip>
 
+#include <ros/ros.h>
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
 #include <sensor_msgs/Imu.h>
 
 #include <glog/logging.h>
@@ -294,5 +302,13 @@ class LIO {
 };
 
 Eigen::Matrix4d SE3Inverse(const Eigen::Matrix4d& T);
+
+bool extractAndCompensateImu(const std::string& ros1_bag, const std::string& lio_states_txt, 
+                             const std::string& imu_topic, const std::string& csv_path,
+                             double gyro_scale, double acc_scale);
+
+bool extractAndConvertImu(const std::string& ros1_bag, const std::string& lio_states_txt, 
+                          const std::string& imu_topic, const Eigen::Isometry3d& B_T_L,
+                          const std::string& csv_path, double gyro_scale, double acc_scale);
 
 #endif

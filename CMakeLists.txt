@@ -74,6 +74,7 @@ include_directories(SYSTEM
 )
 
 add_library(${PROJECT_NAME} STATIC
+  src/common.cpp
   src/pointcloud_preprocess.cpp
   src/lio.cpp
   src/voxel_map.cpp

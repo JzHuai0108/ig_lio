@@ -935,6 +935,17 @@ int main(int argc, char** argv) {
     if (FLAG_EXIT) break;
   }
   bag.close();
+  odom_stream.close();
+
+  fs::path imu_csv = fs::path(output_dir) / "imu.csv";
+  if (pcd_save_frame == "imu") {
+    extractAndCompensateImu(ros1_bagfile, result_path.string(), imu_topic, imu_csv.string(), 
+                            enable_gyro_correct ? kGyroScale : 1, enable_acc_correct ? kAccScale : 1);
+  } else if (pcd_save_frame == "lidar") {
+    Eigen::Isometry3d B_T_L = Eigen::Isometry3d(T_imu_lidar); 
+    extractAndConvertImu(ros1_bagfile, result_path.string(), imu_topic, B_T_L, imu_csv.string(),
+                        enable_gyro_correct ? kGyroScale : 1, enable_acc_correct ? kAccScale : 1);
+  }
 
   LOG(INFO) << "Finished processing bag file " << ros1_bagfile
             << ", lidar msgs " << lid_cnt << ", imu msgs " << imu_cnt;
