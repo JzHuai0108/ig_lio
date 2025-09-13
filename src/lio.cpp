@@ -1321,6 +1321,7 @@ bool extractAndConvertImu(const std::string& ros1_bag, const std::string& lio_st
 
   AlphaEstimator alpha_est;
   size_t n_written = 0;
+  size_t n_large_accel = 0;
 
   for (const rosbag::MessageInstance& m : view) {
     auto imu = m.instantiate<sensor_msgs::Imu>();
@@ -1358,6 +1359,16 @@ bool extractAndConvertImu(const std::string& ros1_bag, const std::string& lio_st
                               - tangential(alpha_L, r_L)
                               - centripetal(w_L, r_L);
 
+    if (f_L.lpNorm<Eigen::Infinity>() > 40) {
+      std::cerr << "Warn: large acceleration " << t.sec << "." << std::setw(9) << std::setfill('0') << t.nsec
+        << ", w_L " << std::setprecision(9) << w_L.x() << "," << w_L.y() << "," << w_L.z() << ", f_L "
+        << f_L.x() << "," << f_L.y() << "," << f_L.z() << ", alpha_L " << alpha_L.transpose()
+        << "\n\tw_L " << w_L.transpose() << ", f_L_rot " << f_L_rot.transpose()
+        << ", tangential " << tangential(alpha_L, r_L).transpose()
+        << ", centripetal " << centripetal(w_L, r_L).transpose() << "\n\tbg_B " << bg_B.transpose() 
+        << ", ba_B " << ba_B.transpose() << ", w_B "<< w_B.transpose() << ", f_B " << f_B.transpose() << std::endl;
+      n_large_accel++;
+    }
     // CSV line
     ofs << t.sec << "." << std::setw(9) << std::setfill('0') << t.nsec
         << "," << std::setprecision(9)
@@ -1369,6 +1380,12 @@ bool extractAndConvertImu(const std::string& ros1_bag, const std::string& lio_st
   ofs.close();
   bag.close();
   std::cout << "Wrote " << n_written << " rows to " << csv_path << "\n";
+  if (n_large_accel) {
+    std::cout << "Warn: detected " << n_large_accel
+          << (n_large_accel == 1 ? " large-acceleration event. " : " large-acceleration events. ")
+          << "Possible cause: clustered IMU timestamps (tiny/irregular dt)."
+          << std::endl;
+  }
   return (n_written > 0);
 }
 

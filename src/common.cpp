@@ -118,6 +118,7 @@ std::istream& operator>>(std::istream& is, StampedState& s) {
   s.r = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]);
   i += 3;
   s.q = Eigen::Quaterniond(nums[i+3], nums[i], nums[i+1], nums[i+2]);
+  s.q.normalize();
   i += 4;
   s.v = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]);
   i += 3;
