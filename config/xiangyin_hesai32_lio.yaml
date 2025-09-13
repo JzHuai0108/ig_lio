@@ -3,21 +3,23 @@ imu_topic: /imu/data
 lidar_type: hesai_xiangyin # livox velodyne ouster
 min_radius: 1.0
 max_radius: 200.0
-point_filter_num: 1
+point_filter_num: 2
+est_plane_thresh: 0.90
+icp_dist_thresh: 0.94
 time_scale: 1000.0
 enable_ahrs_initalization: false
 enable_acc_correct: false
 enable_gyro_correct: false
 tbb_threads: 1 # 0 auto, 1 single thread
 
-scan_resolution: 0.5
-voxel_map_resolution: 0.5
+scan_resolution: 0.2
+voxel_map_resolution: 0.2
 max_iterations: 10
 
-acc_cov: 0.01
-gyr_cov: 0.0001
-ba_cov: 0.000001
-bg_cov: 0.000001
+acc_cov: 0.1
+gyr_cov: 0.04
+ba_cov: 0.0001
+bg_cov: 0.0001
 
 gicp_constraints_gain: 100.0
 point2plane_constraints_gain: 1000.0

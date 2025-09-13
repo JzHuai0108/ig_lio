@@ -503,10 +503,10 @@ double LIO::ConstructPoint2PlaneConstraints(Eigen::Matrix<double, 15, 15>& H,
 
           Eigen::Vector4d plane_coeff;
           if (nearest_points.size() >= 3 &&
-              EstimatePlane(plane_coeff, nearest_points)) {
+              EstimatePlane(plane_coeff, nearest_points, est_plane_thresh)) {
             double error = plane_coeff.head(3).dot(p_w) + plane_coeff(3, 0);
-
-            bool is_vaild = p.norm() > (81 * error * error);
+            double icp_dist2 = (p_w - nearest_points[0]).squaredNorm();
+            bool is_vaild = p.norm() * std::pow((1 - icp_dist_thresh), 2) > (0.81 * icp_dist2);
             if (is_vaild) {
               std::shared_ptr<Correspondence> corr_ptr =
                   std::make_shared<Correspondence>();

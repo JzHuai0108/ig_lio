@@ -299,6 +299,8 @@ class LIO {
 
   size_t effect_const_num_{0};
   double ava_effect_feat_num_{0.0};
+  double icp_dist_thresh = 0.9; // The larger, the less points will be selected for ICP matching.
+  double est_plane_thresh = 0.1; // The larger, the more surfels will be accepted as planes.
 };
 
 Eigen::Matrix4d SE3Inverse(const Eigen::Matrix4d& T);
