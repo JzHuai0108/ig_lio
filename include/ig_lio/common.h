@@ -213,6 +213,13 @@ struct StampedState {
     return T;
   }
 
+  Eigen::Isometry3f toIsometry3f() const {
+    Eigen::Isometry3f T = Eigen::Isometry3f::Identity();
+    T.translation() = r.cast<float>();
+    T.linear() = q.toRotationMatrix().cast<float>();
+    return T;
+  }
+
   IncrementMotion between(const StampedState &sj) const;
 
   Eigen::Isometry3d betweenPose(const StampedState &sj) const;
