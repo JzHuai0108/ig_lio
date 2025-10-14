@@ -809,6 +809,7 @@ bool LIO::StaticInitialization(SensorMeasurement& sensor_measurement) {
     const auto& gyr = sensor_measurement.imu_buff_.front().angular_velocity;
     imu_init_buff_.emplace_back(Eigen::Vector3d(acc.x, acc.y, acc.z),
                                 Eigen::Vector3d(gyr.x, gyr.y, gyr.z));
+    first_imu_frame_ = false;
   }
 
   for (const auto& imu_msg : sensor_measurement.imu_buff_) {
