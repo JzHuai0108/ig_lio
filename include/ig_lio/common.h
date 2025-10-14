@@ -314,6 +314,10 @@ medianFieldValue(gW)
 size_t loadStates(const std::string &stateFile,
                   StampedStateVector *states);
 
+// Inputs: prop.aabb_min (mn), prop.aabb_max (mx), prop.n (unit normal)
+double approxAreaFromAabbAndNormal(const Eigen::Vector3d& mn,
+                                   const Eigen::Vector3d& mx,
+                                   const Eigen::Vector3d& n);
 }  // namespace cba
 
 #endif // COMMON_H

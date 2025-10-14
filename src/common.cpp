@@ -215,5 +215,35 @@ std::istream& operator>>(std::istream& is, ImuData& d) {
   return is;
 }
 
+// Inputs: prop.aabb_min (mn), prop.aabb_max (mx), prop.n (unit normal)
+double approxAreaFromAabbAndNormal(const Eigen::Vector3d& mn,
+                                   const Eigen::Vector3d& mx,
+                                   const Eigen::Vector3d& n)
+{
+  // Build an orthonormal basis (u,v) on the plane
+  Eigen::Vector3d t = (std::abs(n.x()) < 0.9) ? Eigen::Vector3d::UnitX()
+                                              : Eigen::Vector3d::UnitY();
+  Eigen::Vector3d u = (t - t.dot(n) * n).normalized();
+  Eigen::Vector3d v = n.cross(u);
+
+  // 8 AABB corners
+  Eigen::Vector3d c[8] = {
+    {mn.x(), mn.y(), mn.z()}, {mx.x(), mn.y(), mn.z()},
+    {mn.x(), mx.y(), mn.z()}, {mx.x(), mx.y(), mn.z()},
+    {mn.x(), mn.y(), mx.z()}, {mx.x(), mn.y(), mx.z()},
+    {mn.x(), mx.y(), mx.z()}, {mx.x(), mx.y(), mx.z()}
+  };
+
+  double umin= std::numeric_limits<double>::infinity(), vmin=umin;
+  double umax=-umin, vmax=-umin;
+
+  for (int i=0; i<8; ++i) {
+    double cu = c[i].dot(u), cv = c[i].dot(v);
+    umin = std::min(umin, cu); umax = std::max(umax, cu);
+    vmin = std::min(vmin, cv); vmax = std::max(vmax, cv);
+  }
+  return std::max(0.0, umax-umin) * std::max(0.0, vmax-vmin);
+}
+
 
 } // namespace cba
