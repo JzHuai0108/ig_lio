@@ -29,6 +29,7 @@ void FasterVoxelGrid::Filter(const CloudPtr& input_cloud_ptr,
                             input_cloud_ptr->points[i]
                                 .getVector3fMap()
                                 .template cast<double>();
+                        double intensity = input_cloud_ptr->points[i].intensity;
                         size_t hash_idx = ComputeHashIndex(point);
 
                         MyAccessor accessor;
@@ -39,6 +40,7 @@ void FasterVoxelGrid::Filter(const CloudPtr& input_cloud_ptr,
                           accessor->second = std::make_shared<Voxel>();
 
                           accessor->second->centorid_ = point;
+                          accessor->second->intensity_ = intensity;
                           accessor->second->N_++;
 
                           voxel_array_ptr_->emplace_back(accessor->second);
@@ -48,6 +50,9 @@ void FasterVoxelGrid::Filter(const CloudPtr& input_cloud_ptr,
                           accessor->second->N_++;
                           accessor->second->centorid_ +=
                               (point - accessor->second->centorid_) /
+                              static_cast<double>(accessor->second->N_);
+                          accessor->second->intensity_ +=
+                              (intensity - accessor->second->intensity_) /
                               static_cast<double>(accessor->second->N_);
                         }
                       }
@@ -63,6 +68,8 @@ void FasterVoxelGrid::Filter(const CloudPtr& input_cloud_ptr,
         for (size_t i = r.begin(); i < r.end(); ++i) {
           cloud_DS_ptr->points[i].getVector3fMap() =
               voxel_array_ptr_->at(i)->centorid_.cast<float>();
+          cloud_DS_ptr->points[i].intensity =
+              static_cast<float>(voxel_array_ptr_->at(i)->intensity_);
 
           cloud_cov_ptr->points[i].getVector3fMap() =
               voxel_array_ptr_->at(i)->centorid_.cast<float>();

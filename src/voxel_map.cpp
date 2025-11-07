@@ -88,14 +88,15 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
   std::vector<point_hash_idx> point_buff;
   point_buff.resize(input_cloud_ptr->size());
 
-  // Follow the algorithm 1 in the paper
   tbb::parallel_for(
       tbb::blocked_range<size_t>(0, input_cloud_ptr->size()),
       [&, this](tbb::blocked_range<size_t> r) {
         for (size_t i = r.begin(); i < r.end(); ++i) {
           point_hash_idx p;
-          p.point_ = input_cloud_ptr->points[i].getVector3fMap().cast<double>();
+          const auto& src = input_cloud_ptr->points[i];
+          p.point_    = src.getVector3fMap().cast<double>();
           p.hash_idx_ = ComputeHashIndex(p.point_);
+          p.intensity_ = src.intensity;
           point_buff[i] = p;
         }
       });
@@ -107,23 +108,25 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
     size_t j = i;
     size_t curr_hash_idx = point_buff.at(i).hash_idx_;
     Eigen::Vector3d point_sum = Eigen::Vector3d::Zero();
-    Eigen::Matrix3d cov_sum = Eigen::Matrix3d::Zero();
+    Eigen::Matrix3d cov_sum   = Eigen::Matrix3d::Zero();
     size_t count = 0;
     std::vector<Eigen::Vector3d> points_array_temp;
+    double intensity_sum = 0.0;
+
     for (; j < point_buff.size(); ++j) {
       if (curr_hash_idx == point_buff.at(j).hash_idx_) {
-        // prevent hash collision
         if (IsSameGrid(point_buff.at(i).point_, point_buff.at(j).point_)) {
-          point_sum += point_buff.at(j).point_;
-          cov_sum +=
-              point_buff.at(j).point_ * point_buff.at(j).point_.transpose();
-          count++;
-          points_array_temp.emplace_back(point_buff.at(j).point_);
+          const Eigen::Vector3d& p = point_buff.at(j).point_;
+
+          point_sum += p;
+          cov_sum   += p * p.transpose();
+          ++count;
+          points_array_temp.emplace_back(p);
+
+          intensity_sum += static_cast<double>(point_buff.at(j).intensity_);  // NEW
         } else {
-          // hash collision!
           error_grids++;
         }
-
       } else {
         break;
       }
@@ -135,15 +138,20 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
       std::shared_ptr<Grid> grid = std::make_shared<Grid>(grid_max_points_);
       grid->points_sum_ = point_sum;
       grid->points_num_ = count;
-      grid->cov_sum_ = cov_sum;
+      grid->cov_sum_    = cov_sum;
       grid->points_array_ = points_array_temp;
-      // compute centroid
+
+      grid->intensity_sum_  = intensity_sum;
+      grid->mean_intensity_ =
+          (count > 0) ? (intensity_sum / static_cast<double>(count)) : 0.0;
+
+      // centroid
       grid->centroid_ =
           grid->points_sum_ / static_cast<double>(grid->points_num_);
-      // compute covariance
+      // covariance
       ComputeCovariance(grid);
 
-      // LRU cache
+      // LRU cache logic as before...
       grids_cache_.push_front({curr_hash_idx, grid});
       voxel_map_.insert({curr_hash_idx, grids_cache_.begin()});
       if (voxel_map_.size() >= capacity_) {
@@ -152,23 +160,22 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
       }
     } else {
       Eigen::Vector3d centroid = point_sum / static_cast<double>(count);
-      // prevent hash collision
       if (!IsSameGrid(iter->second->second->centroid_, centroid)) {
         // hash collision!
         error_grids++;
-        // remove this grid
         grids_cache_.erase(iter->second);
 
-        // create a new grid
         std::shared_ptr<Grid> grid = std::make_shared<Grid>(grid_max_points_);
-        grid->points_sum_ = point_sum;
-        grid->points_num_ = count;
-        grid->cov_sum_ = cov_sum;
-        grid->points_array_ = points_array_temp;
-        // compute centroid
+        grid->points_sum_    = point_sum;
+        grid->points_num_    = count;
+        grid->cov_sum_       = cov_sum;
+        grid->points_array_  = points_array_temp;
+        grid->intensity_sum_ = intensity_sum;
+        grid->mean_intensity_ =
+            (count > 0) ? (intensity_sum / static_cast<double>(count)) : 0.0;
+
         grid->centroid_ =
             grid->points_sum_ / static_cast<double>(grid->points_num_);
-        // compute covariance
         ComputeCovariance(grid);
 
         grids_cache_.push_front({curr_hash_idx, grid});
@@ -177,21 +184,24 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
         // If the number of points is greater than 50, the probability has
         // stabilized and no need to update.
         if (iter->second->second->points_num_ < 50) {
-          iter->second->second->points_sum_ += point_sum;
-          iter->second->second->points_num_ += count;
-          iter->second->second->cov_sum_ += cov_sum;
-          // compute centroid
-          iter->second->second->centroid_ =
-              iter->second->second->points_sum_ /
-              static_cast<double>(iter->second->second->points_num_);
-          // compute covariance
+          auto& grid = *iter->second->second;
+          grid.points_sum_ += point_sum;
+          grid.points_num_ += count;
+          grid.cov_sum_    += cov_sum;
+
+          grid.intensity_sum_ += intensity_sum;
+          grid.mean_intensity_ =
+              grid.intensity_sum_ /
+              static_cast<double>(grid.points_num_);
+
+          grid.centroid_ =
+              grid.points_sum_ /
+              static_cast<double>(grid.points_num_);
           ComputeCovariance(iter->second->second);
 
-          // Improve KNN efficiency by limiting the number of points per
-          // grid.
-          if (iter->second->second->points_num_ < grid_max_points_) {
-            iter->second->second->points_array_.insert(
-                iter->second->second->points_array_.end(),
+          if (grid.points_num_ < grid_max_points_) {
+            grid.points_array_.insert(
+                grid.points_array_.end(),
                 points_array_temp.begin(),
                 points_array_temp.end());
           }
@@ -342,6 +352,21 @@ bool VoxelMap::GetCentroidAndCovariance(const size_t hash_idx,
   } else {
     return false;
   }
+}
+
+bool VoxelMap::GetCentroidCovarianceAndIntensity(const size_t hash_idx,
+                                                 Eigen::Vector3d& centroid,
+                                                 Eigen::Matrix3d& cov,
+                                                 double& mean_intensity) {
+  auto iter = voxel_map_.find(hash_idx);
+  if (iter != voxel_map_.end() && iter->second->second->is_valid_) {
+    const auto& grid = *iter->second->second;
+    centroid       = grid.centroid_;
+    cov            = grid.cov_;
+    mean_intensity = grid.mean_intensity_;
+    return true;
+  }
+  return false;
 }
 
 size_t VoxelMap::ComputeHashIndex(const Eigen::Vector3d& point) {

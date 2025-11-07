@@ -38,13 +38,18 @@ struct Grid {
   size_t points_num_{0};
   bool is_valid_{false};
   std::vector<Eigen::Vector3d> points_array_;
+
+  // intensity statistics
+  double intensity_sum_   = 0.0;
+  double mean_intensity_  = 0.0;
 };
 
 struct point_hash_idx {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Eigen::Vector3d point_;
-  size_t hash_idx_;  //
+  size_t hash_idx_;
+  float intensity_;
 
   point_hash_idx() = default;
   point_hash_idx(Eigen::Vector3d point, size_t hash_idx)
@@ -109,6 +114,12 @@ class VoxelMap {
   bool GetCentroidAndCovariance(const size_t hash_idx,
                                 Eigen::Vector3d& centorid,
                                 Eigen::Matrix3d& cov);
+
+  bool GetCentroidCovarianceAndIntensity(
+      size_t hash_idx,
+      Eigen::Vector3d& mean_B,
+      Eigen::Matrix3d& cov_B,
+      double& mean_intensity);
 
   bool KNNByCondition(const Eigen::Vector3d& point,
                       const size_t K,

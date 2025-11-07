@@ -48,6 +48,7 @@ class FasterVoxelGrid {
     Voxel(){};
 
     Eigen::Vector3d centorid_ = Eigen::Vector3d::Zero();
+    double intensity_ = 0.0;
     size_t N_{0};
   };
 
