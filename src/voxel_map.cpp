@@ -296,8 +296,7 @@ void VoxelMap::ComputeCovariance(std::shared_ptr<Grid>& grid_ptr) {
   }
 }
 
-bool VoxelMap::KNNByCondition(const Eigen::Vector3d& point,
-                              const size_t K,
+bool VoxelMap::KNNByCondition(const Eigen::Vector3d& point, const size_t K,
                               const double range,
                               std::vector<Eigen::Vector3d>& results) {
   std::vector<point_distance> point_dist;
@@ -328,8 +327,8 @@ bool VoxelMap::KNNByCondition(const Eigen::Vector3d& point,
   }
 
   if (point_dist.size() > K) {
-    std::nth_element(
-        point_dist.begin(), point_dist.begin() + K - 1, point_dist.end());
+    std::nth_element(point_dist.begin(), point_dist.begin() + K - 1,
+                     point_dist.end());
     point_dist.resize(K);
   }
   std::nth_element(point_dist.begin(), point_dist.begin(), point_dist.end());
@@ -370,19 +369,25 @@ bool VoxelMap::GetCentroidCovarianceAndIntensity(const size_t hash_idx,
 }
 
 size_t VoxelMap::ComputeHashIndex(const Eigen::Vector3d& point) {
-  double loc_xyz[3];
-  for (size_t i = 0; i < 3; ++i) {
-    loc_xyz[i] = point[i] * inv_resolution_;
-    if (loc_xyz[i] < 0) {
-      loc_xyz[i] -= 1.0;
-    }
-  }
+  Eigen::Vector3i grid_idx =
+      (point * inv_resolution_).array().floor().cast<int>();
+  return size_t(((grid_idx.x()) * 73856093) ^ ((grid_idx.y()) * 471943) ^
+                ((grid_idx.z()) * 83492791)) %
+         capacity_;
 
-  size_t x = static_cast<size_t>(loc_xyz[0]);
-  size_t y = static_cast<size_t>(loc_xyz[1]);
-  size_t z = static_cast<size_t>(loc_xyz[2]);
+  // double loc_xyz[3];
+  // for (size_t i = 0; i < 3; ++i) {
+  //   loc_xyz[i] = point[i] * inv_resolution_;
+  //   if (loc_xyz[i] < 0) {
+  //     loc_xyz[i] -= 1.0;
+  //   }
+  // }
 
-  return ((((z)*HASH_P_) % MAX_N_ + (y)) * HASH_P_) % MAX_N_ + (x);
+  // size_t x = static_cast<size_t>(loc_xyz[0]);
+  // size_t y = static_cast<size_t>(loc_xyz[1]);
+  // size_t z = static_cast<size_t>(loc_xyz[2]);
+
+  // return ((((z)*HASH_P_) % MAX_N_ + (y)) * HASH_P_) % MAX_N_ + (x);
 }
 
 bool VoxelMap::IsSameGrid(const Eigen::Vector3d& p1,

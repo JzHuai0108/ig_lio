@@ -67,6 +67,7 @@ class FasterVoxelGrid {
   size_t HASH_P_{116101};
   size_t MAX_N_{10000000000};
   size_t min_points_per_grid_{6};
+  size_t capacity_{5000000};
 };
 
 #endif
