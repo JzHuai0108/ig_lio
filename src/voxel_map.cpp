@@ -1,5 +1,5 @@
 #include "ig_lio/voxel_map.h"
-
+#include <pcl/io/pcd_io.h>
 #include <array>
 
 #include <Eigen/Eigenvalues>
@@ -338,6 +338,65 @@ bool VoxelMap::KNNByCondition(const Eigen::Vector3d& point, const size_t K,
     results.emplace_back(it.point_);
   }
   return true;
+}
+
+void VoxelMap::ComputeMapBoundingBox(Eigen::Vector3d& min_pt,
+                                     Eigen::Vector3d& max_pt) const {
+  min_pt = Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity());
+  max_pt = -min_pt;
+  for (const auto& kv : voxel_map_) {
+    const auto& grid = *kv.second->second;
+    const Eigen::Vector3d& c = grid.centroid_;
+    min_pt = min_pt.cwiseMin(c);
+    max_pt = max_pt.cwiseMax(c);
+  }
+}
+
+void VoxelMap::SaveAsPcd(const std::string& pcdfile) const {
+  CloudType cloud;
+  cloud.points.reserve(grids_cache_.size());
+
+  for (const auto& kv : grids_cache_) {
+    // kv: std::pair<size_t, std::shared_ptr<Grid>>
+    const std::shared_ptr<Grid>& grid_ptr = kv.second;
+    if (!grid_ptr) {
+      continue;
+    }
+
+    const Grid& grid = *grid_ptr;
+
+    // Optional: only export voxels that are statistically valid & non-empty
+    if (!grid.is_valid_ || grid.points_num_ == 0) {
+      continue;
+    }
+
+    PointType pt;
+    pt.x = static_cast<float>(grid.centroid_.x());
+    pt.y = static_cast<float>(grid.centroid_.y());
+    pt.z = static_cast<float>(grid.centroid_.z());
+    pt.intensity = static_cast<float>(grid.mean_intensity_);  // or 0 if you don't care
+
+    cloud.points.emplace_back(pt);
+  }
+
+  cloud.width  = static_cast<uint32_t>(cloud.points.size());
+  cloud.height = 1;
+  cloud.is_dense = false;
+
+  if (cloud.points.empty()) {
+    std::cerr << "[VoxelMap] saveAsPcd: cloud is empty, nothing to save to "
+              << pcdfile << std::endl;
+    return;
+  }
+
+  if (pcl::io::savePCDFileBinary(pcdfile, cloud) != 0) {
+    std::cerr << "[VoxelMap] saveAsPcd: failed to save PCD to "
+              << pcdfile << std::endl;
+  } else {
+    std::cout << "[VoxelMap] saveAsPcd: saved "
+              << cloud.points.size() << " voxels to "
+              << pcdfile << std::endl;
+  }
 }
 
 bool VoxelMap::GetCentroidAndCovariance(const size_t hash_idx,

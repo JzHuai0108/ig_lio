@@ -128,6 +128,13 @@ class VoxelMap {
 
   size_t GetVoxelMapSize() { return voxel_map_.size(); }
 
+  size_t GetCapacity() { return capacity_; }
+
+  void ComputeMapBoundingBox(Eigen::Vector3d& min_pt,
+                             Eigen::Vector3d& max_pt) const;
+
+  void SaveAsPcd(const std::string& pcdfile) const;
+
   std::vector<Eigen::Vector3d> delta_P_;
   double resolution_{1.0};
   double inv_resolution_{1.0};
