@@ -13,7 +13,7 @@
 #include <stdlib.h>
 
 // #include <boost/filesystem.hpp>
-
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 class Logger {

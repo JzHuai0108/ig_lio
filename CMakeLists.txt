@@ -83,6 +83,15 @@ add_library(${PROJECT_NAME} STATIC
   src/faster_voxel_grid.cpp
 )
 
+if (MSVC)
+  target_compile_options(${PROJECT_NAME} PRIVATE /bigobj)
+endif()
+
+target_compile_definitions(${PROJECT_NAME}
+  PRIVATE
+    GLOG_USE_GLOG_EXPORT
+)
+
 # These lines does not seem to be necessary in exporting the Timer timer global object for the static library.
 # if (WIN32)
 #   set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -134,6 +143,11 @@ target_link_libraries(${PROJECT_NAME}
 ## -----------------------
 add_executable(${PROJECT_NAME}_node
   src/ig_lio_node.cpp
+)
+
+target_compile_definitions(${PROJECT_NAME}_node
+  PRIVATE
+    GLOG_USE_GLOG_EXPORT
 )
 
 # Node only needs to see your library

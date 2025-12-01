@@ -226,8 +226,8 @@ struct StampedState {
 
   void retract(const IncrementMotion &im);
 
-  bool operator<(const StampedState &r) const {
-    return time < r.time;
+  bool operator<(const StampedState &rhs) const {
+    return time < rhs.time;
   }
 
   /**
