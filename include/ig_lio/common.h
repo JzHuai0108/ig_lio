@@ -87,66 +87,6 @@ inline bool operator< (const StampedPose& c1, const StampedPose& c2) {
     return c1.time < c2.time;
 }
 
-inline std::pair<Eigen::Vector3d, Eigen::Quaterniond>
-se3slerp(const StampedPose &left, const ros::Time &t,
-         const StampedPose &right) {
-  double interpFactor =
-      (t - left.time).toSec() / (right.time - left.time).toSec();
-  Eigen::Vector3d w_t_current =
-      left.r * (1 - interpFactor) + right.r * interpFactor;
-  Eigen::Quaterniond w_q_current = left.q.slerp(interpFactor, right.q);
-  return std::make_pair(w_t_current, w_q_current);
-}
-
-struct ScanMatch {
-  ros::Time query;
-  ros::Time train;
-  ScanMatch(const ros::Time& q, const ros::Time& t) : query(q), train(t) {}
-  bool operator<(const ScanMatch &r) const {
-    if (query == r.query) {
-      return train < r.train;
-    }
-    return query < r.query;
-  }
-  bool operator==(const ScanMatch &r) const {
-    if (query == r.query) {
-      return train == r.train;
-    }
-    return false;
-  }
-  friend std::ostream& operator<<(std::ostream& os, const ScanMatch& m);
-};
-
-struct ScanId {
-  ros::Time t;
-  size_t idx;  ///< index of keyscan in poses at scan rate.
-  ScanId(ros::Time _t, size_t _id) : t(_t), idx(_id) {}
-  bool operator<(const ScanId &r) const {
-    return t < r.t;
-  }
-  bool operator==(const ScanId &r) const {
-    return t == r.t;
-  }
-  friend std::ostream& operator<<(std::ostream& os, const ScanId& id);
-};
-
-struct KeyscanId {
-  ros::Time t;
-  size_t idx;  ///< index of keyscan in poses at scan rate.
-  size_t rangeStartIdx;  ///< start index of a scan belong to the keyscan range, inclusive
-  size_t rangeFinishIdx;  ///< finish index of a scan belong to the keyscan range, inclusive
-  std::vector<size_t> windowIdx;  ///< which time window this keyscan is in?
-  KeyscanId(ros::Time _t, size_t _id, size_t _startId) : t(_t), idx(_id), rangeStartIdx(_startId) {}
-  bool operator<(const KeyscanId &r) const {
-    return t < r.t;
-  }
-  bool operator==(const KeyscanId &r) const {
-    return t == r.t;
-  }
-  size_t count() const { return rangeFinishIdx - rangeStartIdx + 1; }
-  friend std::ostream& operator<<(std::ostream& os, const KeyscanId& k);
-};
-
 struct IncrementMotion {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Eigen::Vector3d pij;  // q_wi * p_ij = p_wj - p_wi
@@ -278,38 +218,14 @@ struct ImuData {
   friend std::istream& operator>>(std::istream& is, ImuData& d);
 };
 
-typedef Eigen::Vector3d IncrementMotionCoeffs;  // sp, sq, sv
-
 typedef std::vector<StampedPose, Eigen::aligned_allocator<StampedPose>>
     StampedPoseVector;
-
-typedef std::vector<StampedPoseVector, Eigen::aligned_allocator<StampedPoseVector>>
-    StampedPoseVV;
-
-typedef std::vector<ScanMatch> ScanMatchVector;
 
 typedef std::vector<StampedState, Eigen::aligned_allocator<StampedState>>
     StampedStateVector;
 
 typedef std::vector<ImuData, Eigen::aligned_allocator<ImuData>>
     ImuDataVector;
-
-#define medianFieldValue(field)                                                \
-  inline Eigen::Vector3d median##field(const StampedStateVector &isv,          \
-                                       int index) {                            \
-    StampedStateVector sv = isv;                                               \
-    size_t middle = sv.size() / 2;                                             \
-    std::nth_element(                                                          \
-        sv.begin(), sv.begin() + middle, sv.end(),                             \
-        [index](const StampedState &lhs, const StampedState &rhs) {            \
-          return lhs.field[index] < rhs.field[index];                          \
-        });                                                                    \
-    return sv[middle].field;                                                   \
-  }
-
-medianFieldValue(bg)
-medianFieldValue(ba)
-medianFieldValue(gW)
 
 size_t loadStates(const std::string &stateFile,
                   StampedStateVector *states);

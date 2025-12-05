@@ -20,7 +20,7 @@ endif()
 
 # At the top of your CMakeLists.txt, after setting/reading USE_SYSTEM_EIGEN:
 # (this variable is “AUTO”, “ON” or “OFF”)
-# We treat AUTO the same as OFF here, since AUTO→OFF means "use bundled".
+# We treat AUTO the same as OFF here, since AUTO->OFF means "use bundled".
 if(USE_SYSTEM_EIGEN STREQUAL "ON")
   set(_EIGEN_DEPENDS "")
 else()

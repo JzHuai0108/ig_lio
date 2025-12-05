@@ -25,24 +25,6 @@ std::string StampedPose::toString() const {
   return ss.str();
 }
 
-std::ostream &operator<<(std::ostream &os, const ScanMatch &p) {
-  os << "(" << p.query << ',' << p.train << ')';
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const KeyscanId& k) {
-  os << k.t << " " << k.idx << " " << k.rangeStartIdx
-     << " " << k.rangeFinishIdx;
-  for (auto wid : k.windowIdx)
-    os << " " << wid;
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const ScanId& id) {
-  os << id.t << " " << id.idx;
-  return os;
-}
-
 Eigen::Vector3d IncrementMotion::ratio(const IncrementMotion &ref) const {
   Eigen::Vector3d rqv;
   rqv[0] = ref.pij.norm() * mysign(pij.dot(ref.pij)) / pij.norm();
