@@ -16,7 +16,7 @@ bool LIO::MeasurementUpdate(SensorMeasurement& sensor_measurement) {
       }
     }
     sensor_measurement.cloud_ptr_ = filtered_cloud_ptr;
-    sensor_measurement.lidar_cloud_ptr_ = pcl::make_shared<CloudType>(*sensor_measurement.cloud_ptr_);
+    sensor_measurement.lidar_cloud_ptr_.reset(new CloudType(*sensor_measurement.cloud_ptr_));
 
     timer.Evaluate(
         [&, this]() {
