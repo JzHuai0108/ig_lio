@@ -496,7 +496,8 @@ double LIO::ConstructPoint2PlaneConstraints(Eigen::Matrix<double, 15, 15>& H,
           const Eigen::Vector3d p_w = curr_state_.pose.block<3, 3>(0, 0) * p +
                                       curr_state_.pose.block<3, 1>(0, 3);
 
-          std::vector<Eigen::Vector3d> nearest_points;
+          std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
+              nearest_points;
           nearest_points.reserve(10);
 
           voxel_map_ptr_->KNNByCondition(p_w, 5, 5.0, nearest_points);

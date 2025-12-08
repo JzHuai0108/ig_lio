@@ -24,6 +24,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <Eigen/StdVector>
 
 #include <sophus/so3.hpp>
 
@@ -41,6 +42,7 @@ enum MeasurementType { LIDAR, GNSS };
 enum GNSSStatus { RTK_FIXED, RTK_FLOAT, NONE };
 
 struct SensorMeasurement {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   MeasurementType measurement_type_;
   // ros header.stamp of the message
   double bag_time_{0.0};
@@ -61,7 +63,9 @@ struct SensorMeasurement {
 
 class LIO {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct Config {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Config(){};
 
     double init_ori_cov{1.0};
@@ -160,6 +164,7 @@ class LIO {
   static constexpr int IndexNoiseBiasGyr{15};
 
   struct PoseHistory {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double time_ = 0.0;
     Eigen::Matrix4d T_ = Eigen::Matrix4d::Identity();
     Eigen::Vector3d vel_ = Eigen::Vector3d::Zero();
@@ -290,7 +295,8 @@ class LIO {
   Eigen::Vector3d mean_acc_ = Eigen::Vector3d(0, 0, -1.0);
   Eigen::Vector3d mean_gyr_ = Eigen::Vector3d(0, 0, 0);
   // <acc, gyr>
-  std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> imu_init_buff_;
+  using Vec3dPair = std::pair<Eigen::Vector3d, Eigen::Vector3d>;
+  std::vector<Vec3dPair, Eigen::aligned_allocator<Vec3dPair>> imu_init_buff_;
   bool first_imu_frame_{true};
   size_t imu_init_count_{0};
   size_t max_init_count_{20};

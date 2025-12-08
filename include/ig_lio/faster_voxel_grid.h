@@ -9,11 +9,15 @@
 
 #include <glog/logging.h>
 
+#include <vector>
+
 #include <tbb/concurrent_hash_map.h>
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for.h>
 
 #include "point_type.h"
+
+#include <Eigen/StdVector>
 
 class FasterVoxelGrid {
  public:
@@ -45,6 +49,7 @@ class FasterVoxelGrid {
   double inv_resolution_{1.0};
 
   struct Voxel {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Voxel(){};
 
     Eigen::Vector3d centorid_ = Eigen::Vector3d::Zero();
@@ -59,7 +64,8 @@ class FasterVoxelGrid {
   std::shared_ptr<MyHashMap> voxel_map_ptr_;
   std::shared_ptr<MyVector> voxel_array_ptr_;
 
-  std::vector<Eigen::Vector3d> search_range_;
+  std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>
+      search_range_;
 
   double ava_precent_{0.0};
   size_t frame_count_{0};

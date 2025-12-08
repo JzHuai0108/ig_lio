@@ -8,6 +8,7 @@
 
 class SymmetricEigensolver3x3 {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   SymmetricEigensolver3x3();
 
   SymmetricEigensolver3x3(const Eigen::Matrix3d input_matrix);

@@ -9,6 +9,7 @@
 
 #include <execution>
 #include <list>
+#include <vector>
 #include <unordered_map>
 
 #include <tbb/concurrent_hash_map.h>
@@ -21,8 +22,12 @@
 #include <glog/logging.h>
 
 #include <Eigen/Core>
+#include <Eigen/StdVector>
 
 #include "ig_lio/point_type.h"
+
+using Vec3dVector =
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>;
 
 struct Grid {
  public:
@@ -37,7 +42,7 @@ struct Grid {
   Eigen::Vector3d points_sum_ = Eigen::Vector3d::Zero();
   size_t points_num_{0};
   bool is_valid_{false};
-  std::vector<Eigen::Vector3d> points_array_;
+  Vec3dVector points_array_;
 
   // intensity statistics
   double intensity_sum_   = 0.0;
@@ -64,6 +69,7 @@ struct point_hash_idx {
 // for KNN
 struct point_distance {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   point_distance() = default;
   point_distance(const Eigen::Vector3d& point,
                  const double distance,
@@ -124,7 +130,7 @@ class VoxelMap {
   bool KNNByCondition(const Eigen::Vector3d& point,
                       const size_t K,
                       const double range,
-                      std::vector<Eigen::Vector3d>& results);
+                      Vec3dVector& results);
 
   size_t GetVoxelMapSize() { return voxel_map_.size(); }
 
@@ -135,7 +141,7 @@ class VoxelMap {
 
   void SaveAsPcd(const std::string& pcdfile) const;
 
-  std::vector<Eigen::Vector3d> delta_P_;
+  Vec3dVector delta_P_;
   double resolution_{1.0};
   double inv_resolution_{1.0};
   size_t capacity_{5000000};

@@ -2,20 +2,34 @@ cmake_minimum_required(VERSION 3.5)
 project(ig_lio)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 ${CMAKE_CXX_FLAGS} -Wall")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+# Do NOT hard-set CMAKE_BUILD_TYPE here; catkin_make_isolated passes it.
+# If you really want a default for standalone builds, you can do:
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 
-# ──────────────────────────────────────────────────────────────────
-# 1) Force the DLL CRT (/MD) so iostream uses __declspec(dllimport)
-# These lines are necessary to fix the error:
-# error LNK2001: unresolved external symbol "__declspec(dllimport) public: class std::basic_ostream<char,struct std::char_traits<char> > *
-# ──────────────────────────────────────────────────────────────────
-if(MSVC)
-  # Apply to all targets:
+if (MSVC)
+  # Warnings
+  add_compile_options(/W4)
+
+  # Use DLL CRT: /MD in all configs, and /MDd in Debug
   add_compile_options("/MD" "$<$<CONFIG:Debug>:/MDd>")
+
+  # Optimizations: /O2, define NDEBUG in Release
+  # (catkin may already set /O2, but this is safe)
+  add_compile_options("$<$<CONFIG:Release>:/O2>" "$<$<CONFIG:Release>:/DNDEBUG>")
+
+  # Optional: source files as UTF-8
+  add_compile_options(/utf-8)
+
+else()
+  # GCC / Clang: strong warnings & optimizations
+  add_compile_options(-Wall -Wextra -Wpedantic)
+
+  add_compile_options("$<$<CONFIG:Release>:-O3>" "$<$<CONFIG:Release>:-DNDEBUG>")
 endif()
 
 # At the top of your CMakeLists.txt, after setting/reading USE_SYSTEM_EIGEN:

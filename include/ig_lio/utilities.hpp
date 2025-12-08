@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <Eigen/Core>
+#include <Eigen/StdVector>
 
 template <typename C, typename D, typename Getter>
 void ComputeMeanAndCovDiag(const C& data,
@@ -28,7 +29,8 @@ void ComputeMeanAndCovDiag(const C& data,
 }
 
 inline bool EstimatePlane(Eigen::Vector4d& pca_result,
-                          const std::vector<Eigen::Vector3d>& point,
+                          const std::vector<Eigen::Vector3d,
+                                             Eigen::aligned_allocator<Eigen::Vector3d>>& point,
                           const double threshold = 0.1) {
   if (point.size() < 3) {
     return false;

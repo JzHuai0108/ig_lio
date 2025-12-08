@@ -85,7 +85,8 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
     return false;
   }
 
-  std::vector<point_hash_idx> point_buff;
+  std::vector<point_hash_idx, Eigen::aligned_allocator<point_hash_idx>>
+      point_buff;
   point_buff.resize(input_cloud_ptr->size());
 
   tbb::parallel_for(
@@ -110,7 +111,7 @@ bool VoxelMap::AddCloud(const CloudPtr& input_cloud_ptr) {
     Eigen::Vector3d point_sum = Eigen::Vector3d::Zero();
     Eigen::Matrix3d cov_sum   = Eigen::Matrix3d::Zero();
     size_t count = 0;
-    std::vector<Eigen::Vector3d> points_array_temp;
+    Vec3dVector points_array_temp;
     double intensity_sum = 0.0;
 
     for (; j < point_buff.size(); ++j) {
@@ -297,9 +298,9 @@ void VoxelMap::ComputeCovariance(std::shared_ptr<Grid>& grid_ptr) {
 }
 
 bool VoxelMap::KNNByCondition(const Eigen::Vector3d& point, const size_t K,
-                              const double range,
-                              std::vector<Eigen::Vector3d>& results) {
-  std::vector<point_distance> point_dist;
+                              const double range, Vec3dVector& results) {
+  std::vector<point_distance, Eigen::aligned_allocator<point_distance>>
+      point_dist;
   point_dist.reserve(delta_P_.size() * grid_max_points_);
   double range2 = range * range;
 
