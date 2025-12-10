@@ -87,29 +87,38 @@ std::ostream &operator<<(std::ostream &os, const StampedState &s) {
 std::istream& operator>>(std::istream& is, StampedState& s) {
   std::vector<std::string> strs;
   std::string str;
-  while(getline(is, str, ' '))
+
+  // Split, but skip empty tokens (from trailing/multiple spaces)
+  while (std::getline(is, str, ' ')) {
+    // Remove pure-whitespace tokens
+    auto it = std::find_if_not(str.begin(), str.end(),
+                               [](unsigned char c){ return std::isspace(c); });
+    if (it == str.end()) continue;          // all whitespace
+    str.erase(str.begin(), it);             // trim left if you like
+    if (str.empty()) continue;
     strs.push_back(str);
+  }
+
+  if (strs.empty())
+    return is;  // or set failbit: is.setstate(std::ios::failbit);
+
   std::pair<uint32_t, uint32_t> ptime = parseTime(strs[0]);
   ros::Time rtime(ptime.first, ptime.second);
+
   std::vector<double> nums;
   nums.reserve(strs.size() - 1);
-  for(size_t j=1; j<strs.size(); j++)
+  for (size_t j = 1; j < strs.size(); j++)
     nums.push_back(std::stod(strs[j]));
+
   s.time = rtime;
   int i = 0;
-  s.r = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]);
-  i += 3;
-  s.q = Eigen::Quaterniond(nums[i+3], nums[i], nums[i+1], nums[i+2]);
-  s.q.normalize();
-  i += 4;
-  s.v = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]);
-  i += 3;
-  s.bg = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]);
-  i += 3;
-  s.ba = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]);
-  i += 3;
-  s.gW = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]);
-  i += 3;
+  s.r = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]); i += 3;
+  s.q = Eigen::Quaterniond(nums[i+3], nums[i], nums[i+1], nums[i+2]); i += 4;
+  s.v  = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]); i += 3;
+  s.bg = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]); i += 3;
+  s.ba = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]); i += 3;
+  s.gW = Eigen::Vector3d(nums[i], nums[i+1], nums[i+2]); i += 3;
+
   return is;
 }
 
@@ -122,9 +131,10 @@ size_t loadStates(const std::string &stateFile,
   }
   states->reserve(100 * 10);
   std::string lineStr, str;
-  while(getline(inFile, lineStr)) {
-    if (lineStr[0] == '#')
+  while (std::getline(inFile, lineStr)) {
+    if (lineStr.empty() || lineStr[0] == '#')
       continue;
+
     std::stringstream ss(lineStr);
     StampedState s;
     ss >> s;
