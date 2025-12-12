@@ -5,31 +5,46 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Do NOT hard-set CMAKE_BUILD_TYPE here; catkin_make_isolated passes it.
-# If you really want a default for standalone builds, you can do:
-if(NOT CMAKE_BUILD_TYPE)
+# Only set a default build type for single-config generators (Makefiles, Ninja)
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
 if (MSVC)
-  # Warnings
-  add_compile_options(/W4)
+  add_compile_options(/W4 /EHsc /utf-8)
 
-  # Use DLL CRT: /MD in all configs, and /MDd in Debug
-  add_compile_options("/MD" "$<$<CONFIG:Debug>:/MDd>")
+  # CRT configuration
+  add_compile_options(
+    $<$<CONFIG:Debug>:/MDd>
+    $<$<CONFIG:Release>:/MD>
+    $<$<CONFIG:RelWithDebInfo>:/MD>
+    $<$<CONFIG:MinSizeRel>:/MD>
+  )
 
-  # Optimizations: /O2, define NDEBUG in Release
-  # (catkin may already set /O2, but this is safe)
-  add_compile_options("$<$<CONFIG:Release>:/O2>" "$<$<CONFIG:Release>:/DNDEBUG>")
+  # Optimizations + NDEBUG
+  add_compile_options(
+    $<$<CONFIG:Release>:/O2>
+    $<$<CONFIG:Release>:/DNDEBUG>
+    $<$<CONFIG:RelWithDebInfo>:/O2>
+    $<$<CONFIG:RelWithDebInfo>:/DNDEBUG>
+  )
 
-  # Optional: source files as UTF-8
-  add_compile_options(/utf-8)
-
+  # Precise FP + AVX2
+  # add_compile_options(
+  #   $<$<CONFIG:Release>:/fp:precise>
+  #   $<$<CONFIG:Release>:/arch:AVX2>
+  #   $<$<CONFIG:RelWithDebInfo>:/fp:precise>
+  #   $<$<CONFIG:RelWithDebInfo>:/arch:AVX2>
+  # )
 else()
-  # GCC / Clang: strong warnings & optimizations
+  # GCC / Clang
   add_compile_options(-Wall -Wextra -Wpedantic)
 
-  add_compile_options("$<$<CONFIG:Release>:-O3>" "$<$<CONFIG:Release>:-DNDEBUG>")
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O3 -DNDEBUG)
+  else()
+    add_compile_options(-O1 -g)
+  endif()
 endif()
 
 # At the top of your CMakeLists.txt, after setting/reading USE_SYSTEM_EIGEN:
