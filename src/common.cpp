@@ -122,6 +122,44 @@ std::istream& operator>>(std::istream& is, StampedState& s) {
   return is;
 }
 
+StampedState applyIncrement(const StampedState& si, const IncrementMotion& inc)
+{
+  StampedState s = si;
+  s.r = si.r + si.q * inc.pij;
+  s.q = (si.q * inc.qij).normalized();
+  s.v = si.v + si.q * inc.vij;
+  return s;
+}
+
+StampedState interp(const StampedState& a, const StampedState& b, double alpha)
+{
+  alpha = std::clamp(alpha, 0.0, 1.0);
+  IncrementMotion im = a.between(b);
+  im.multiply(Eigen::Vector3d(alpha, alpha, alpha));
+  StampedState out = applyIncrement(a, im);
+  out.time = a.time + ros::Duration((b.time - a.time).toSec() * alpha);
+  out.bg = (1-alpha)*a.bg + alpha*b.bg;
+  out.ba = (1-alpha)*a.ba + alpha*b.ba;
+  out.gW = (1-alpha)*a.gW + alpha*b.gW;
+  return out;
+}
+
+StampedState interpAtMonotonic(const std::vector<StampedState>& traj,
+                                      const ros::Time& t,
+                                      size_t& idx) // idx moves forward
+{
+  if (traj.empty()) return {};
+  while (idx + 1 < traj.size() && traj[idx + 1].time < t) idx++;
+  if (idx + 1 >= traj.size()) return traj.back();
+  if (t <= traj.front().time) return traj.front();
+
+  const auto& a = traj[idx];
+  const auto& b = traj[idx + 1];
+  const double dt = (b.time - a.time).toSec();
+  const double alpha = (dt > 0) ? (t - a.time).toSec() / dt : 0.0;
+  return interp(a, b, alpha);
+}
+
 size_t loadStates(const std::string &stateFile,
                  StampedStateVector *states) {
   std::ifstream inFile(stateFile);
@@ -146,6 +184,19 @@ size_t loadStates(const std::string &stateFile,
   std::cout << "First state: " << states->front() << std::endl;
   std::cout << "Last state: " << states->back() << std::endl;
   return states->size();
+}
+
+size_t saveStates(const StampedStateVector &states,
+                  const std::string &stateFile) {
+  std::ofstream os(stateFile, std::ofstream::out);
+  if (!os.is_open()) {
+    std::cout << "Failed to open output state file " << stateFile << "." << std::endl;
+    return 0;
+  }
+  for (const auto &s : states) {
+    os << s.toString() << "\n";
+  }
+  return states.size();
 }
 
 std::ostream& operator<<(std::ostream& os, const ImuData& d) {

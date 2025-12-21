@@ -142,6 +142,10 @@ struct StampedState {
     gW = _gW;
   }
 
+  Eigen::Quaterniond quat() const {
+    return q;
+  }
+
   Eigen::Vector3d trans() const {
     return r;
   }
@@ -230,10 +234,22 @@ typedef std::vector<ImuData, Eigen::aligned_allocator<ImuData>>
 size_t loadStates(const std::string &stateFile,
                   StampedStateVector *states);
 
+size_t saveStates(const StampedStateVector &states,
+                  const std::string &stateFile);
+
 // Inputs: prop.aabb_min (mn), prop.aabb_max (mx), prop.n (unit normal)
 double approxAreaFromAabbAndNormal(const Eigen::Vector3d& mn,
                                    const Eigen::Vector3d& mx,
                                    const Eigen::Vector3d& n);
+
+StampedState applyIncrement(const StampedState& si, const IncrementMotion& inc);
+
+StampedState interp(const StampedState& a, const StampedState& b, double alpha);
+
+StampedState interpAtMonotonic(const std::vector<StampedState>& traj,
+                               const ros::Time& t,
+                               size_t& idx);
+
 }  // namespace cba
 
 #endif // COMMON_H
