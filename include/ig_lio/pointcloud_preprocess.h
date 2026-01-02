@@ -26,13 +26,13 @@ enum class LidarType { LIVOX, VELODYNE, OUSTER, LIVOX_ROS, HESAI_XIANGYIN };
 // HESAI_XIANGYIN: Hesai Xiangyin PointCloud2 message
 
 // for Velodyne LiDAR
-struct VelodynePointXYZIRT {
+struct EIGEN_ALIGN16 VelodynePointXYZIRT {
   PCL_ADD_POINT4D;
   PCL_ADD_INTENSITY;
   uint16_t ring;
   float time;
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-} EIGEN_ALIGN16;
+};
 POINT_CLOUD_REGISTER_POINT_STRUCT(
     VelodynePointXYZIRT,
     (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(
@@ -56,7 +56,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(HesaiPoint,
 )
 
 // for Ouster LiDAR
-struct OusterPointXYZIRT {
+struct EIGEN_ALIGN16 OusterPointXYZIRT {
   PCL_ADD_POINT4D;
   float intensity;
   uint32_t t;
@@ -65,14 +65,14 @@ struct OusterPointXYZIRT {
   uint16_t noise;
   uint32_t range;
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-} EIGEN_ALIGN16;
+};
 POINT_CLOUD_REGISTER_POINT_STRUCT(
     OusterPointXYZIRT,
     (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(
         std::uint32_t, t, t)(std::uint16_t, reflectivity, reflectivity)(
         std::uint8_t, ring, ring)(std::uint16_t, noise, noise)(std::uint32_t, range, range))
 
-struct LivoxRosPointXYZIRT {
+struct EIGEN_ALIGN16 LivoxRosPointXYZIRT {
   PCL_ADD_POINT4D;
   float intensity;
   uint8_t tag;
@@ -80,13 +80,13 @@ struct LivoxRosPointXYZIRT {
   double timestamp;
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-} EIGEN_ALIGN16;
+};
 POINT_CLOUD_REGISTER_POINT_STRUCT(
     LivoxRosPointXYZIRT,
     (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(
         std::uint8_t, tag, tag)(std::uint8_t, line, line)(double, timestamp, timestamp))
 
-// struct OusterPointXYZIRT {
+// struct EIGEN_ALIGN16 OusterPointXYZIRT {
 //   PCL_ADD_POINT4D;
 //   float intensity;
 //   double timestamp;
@@ -95,7 +95,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
 //   uint16_t noise;
 //   uint32_t range;
 //   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-// } EIGEN_ALIGN16;
+// };
 // POINT_CLOUD_REGISTER_POINT_STRUCT(
 //     OusterPointXYZIRT,
 //     (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(
