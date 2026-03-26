@@ -167,7 +167,15 @@ size_t loadStates(const std::string &stateFile,
     printf("Open state file %s failed.\n", stateFile.c_str());
     return 0;
   }
-  states->reserve(100 * 10);
+  size_t lineCount = 0;
+  {
+    std::string tmp;
+    while (std::getline(inFile, tmp))
+      if (!tmp.empty() && tmp[0] != '#') lineCount++;
+    inFile.clear();
+    inFile.seekg(0);
+  }
+  states->reserve(lineCount);
   std::string lineStr, str;
   while (std::getline(inFile, lineStr)) {
     if (lineStr.empty() || lineStr[0] == '#')
