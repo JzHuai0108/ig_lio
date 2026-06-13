@@ -1,0 +1,13 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Eigen3)
+find_dependency(PCL)
+find_dependency(TBB)
+
+if(NOT TARGET lio_common::lio_common)
+  find_dependency(lio_common)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/ig_lioTargets.cmake")

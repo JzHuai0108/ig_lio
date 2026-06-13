@@ -1,6 +1,6 @@
 #include "ig_lio/lio.h"
 
-#include "ig_lio/common.h"
+#include <lio/common.h>
 #include "ig_lio/timer.h"
 
 extern Timer timer;
