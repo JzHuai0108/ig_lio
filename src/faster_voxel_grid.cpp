@@ -126,9 +126,11 @@ void FasterVoxelGrid::Filter(const CloudPtr& input_cloud_ptr,
       });
 
   frame_count_++;
-  double current_precent = (static_cast<double>(point_with_cov_count) /
-                            static_cast<double>(cloud_cov_ptr->size())) *
-                           100.0;
+  double current_precent = cloud_cov_ptr->empty()
+                               ? 0.0
+                               : (static_cast<double>(point_with_cov_count) /
+                                  static_cast<double>(cloud_cov_ptr->size())) *
+                                     100.0;
   ava_precent_ +=
       (current_precent - ava_precent_) / static_cast<double>(frame_count_);
 
