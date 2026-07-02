@@ -181,9 +181,7 @@ bool LIO::GNStep(const SensorMeasurement& sensor_measurement,
                  Eigen::Matrix<double, 15, 1>& delta_x) {
   timer.Evaluate(
       [&, this]() {
-        // The function inverse() has better numerical stability
-        // And the dimension is small, direct inversion is not time-consuming
-        Eigen::Matrix<double, 15, 1> dir = -H.inverse() * b;
+        Eigen::Matrix<double, 15, 1> dir = H.fullPivLu().solve(-b);
 
         State new_state;
         delta_x = dir;
@@ -1138,7 +1136,7 @@ bool LIO::ComputeFinalCovariance(const Eigen::Matrix<double, 15, 1>& delta_x) {
   Eigen::Matrix<double, 15, 15> L = Eigen::Matrix<double, 15, 15>::Identity();
   L.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity() -
                         0.5 * Sophus::SO3d::hat(delta_x.block<3, 1>(0, 0));
-  P_ = L * temp_P * L;
+  P_ = L * temp_P * L.transpose();
 
   return true;
 }
